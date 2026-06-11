@@ -463,6 +463,8 @@ def main():
     parser.add_argument("--timesteps", type=int, default=RLConfig.TOTAL_TIMESTEPS, help="Training timesteps")
     parser.add_argument("--seed", type=int, default=params.SEED, help="Random seed")
     parser.add_argument("--sweep-steps", type=int, default=params.SWEEP_STEPS, help="Number of load points")
+    parser.add_argument("--algo", type=str, default="all", choices=["all", "Tabular", "DQN", "PPO", "A2C", "MCA-D3QN", "MCA-PPO"], help="Algorithm to run")
+    parser.add_argument("--wandb", action="store_true", help="Enable Wandb logging")
     args = parser.parse_args()
 
     out_dir = make_output_dir()
@@ -479,8 +481,25 @@ def main():
     log(f" Output: {out_dir}")
     log(f" Timesteps: {args.timesteps}")
     log(f" Seed: {args.seed}")
+    log(f" Algo: {args.algo}")
     log(f" N={params.N}, PHY={params.PHY_RATE_BPS/1e6:.0f}Mbps, Fading={params.FADING_MODEL}")
     log("=" * 60)
+
+    if args.algo != "all":
+        params.RUN_TABULAR_QLEARNING = (args.algo == "Tabular")
+        params.RUN_DQN = (args.algo == "DQN")
+        params.RUN_PPO = (args.algo == "PPO")
+        params.RUN_A2C = (args.algo == "A2C")
+        params.RUN_CUSTOM_RL = (args.algo == "MCA-D3QN")
+        params.RUN_MCA_PPO = (args.algo == "MCA-PPO")
+
+    if args.wandb:
+        import wandb
+        wandb.init(
+            project="sarl_comparison",
+            name=f"{args.algo}_{args.seed}",
+            config=vars(args)
+        )
 
     pps_list = np.linspace(params.SWEEP_MIN_PPS, params.SWEEP_MAX_PPS, args.sweep_steps).astype(int)
 
@@ -517,6 +536,20 @@ def main():
     eval_df = step3_evaluate(trained_models, pps_list, args.seed, log)
     eval_df.to_csv(os.path.join(out_dir, "csv", "sarl_evaluation_results.csv"), index=False)
 
+    if args.wandb:
+        import wandb
+        # Log evaluation metrics back to wandb
+        for _, row in eval_df.iterrows():
+            wandb.log({
+                "eval/Offered_Load_pps": row["Offered_Load_pps"],
+                "eval/Throughput_Mbps": row["Throughput_Mbps"],
+                "eval/Delay_ms": row["Delay_ms"],
+                "eval/Drops": row["Drops"],
+                "eval/Collisions": row["Collisions"],
+                "eval/Avg_Reward": row["Avg_Reward"],
+                "model": row["Model"]
+            })
+
     # Step 4: Plots
     step4_plots(baseline_df, eval_df, out_dir, log)
 
@@ -540,6 +573,10 @@ def main():
     log(f" Results: {out_dir}")
     log("=" * 60)
     log_file.close()
+
+    if args.wandb:
+        import wandb
+        wandb.finish()
 
 
 if __name__ == "__main__":
