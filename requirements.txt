@@ -1,0 +1,13 @@
+numpy
+pandas
+matplotlib
+seaborn
+scipy
+psutil
+gymnasium
+pettingzoo
+stable-baselines3
+torch
+rich
+tqdm
+pytest

@@ -1,0 +1,15 @@
+============================================================
+ SARL Models on MARL Environment — Comparison Experiment
+ Timestamp: 2026-06-12T02:29:49.682596
+ Output: C:\Users\hkphi\OneDrive\Desktop\mobility_rl\sarl_on_marl_env\results\sarl_comparison_20260612_022949
+ Timesteps: 10000
+ Seed: 42
+ N=50, PHY=5Mbps, Fading=nakagami
+============================================================
+
+  [DRY RUN] Verifying imports and environment setup...
+    MARLtoSARLWrapper: obs scalars shape = (14,)
+    Action space: Discrete(2)
+    SARLCentralEnv: obs scalars shape = (240,)
+    Action space: MultiDiscrete([18 18 18 18 18 18 18 18 18 18])
+  [DRY RUN] All imports and environments OK. Exiting.

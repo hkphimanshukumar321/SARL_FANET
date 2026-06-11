@@ -1,0 +1,19 @@
+{
+    "N": 20,
+    "sim_time_s": 10.0,
+    "slot_time_s": 9e-06,
+    "phy_rate_bps": 2000000,
+    "payload_bytes": 1500,
+    "QMAX": 20,
+    "sweep_min_pps": 20,
+    "sweep_max_pps": 1000,
+    "sweep_steps": 20,
+    "cw_min": 15,
+    "cw_max": 1023,
+    "difs_slots": 4,
+    "sifs_slots": 2,
+    "ack_slots": 2,
+    "ack_timeout_slots": 10,
+    "max_retry": 7,
+    "log_interval_slots": 100
+}
