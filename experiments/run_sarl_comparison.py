@@ -465,10 +465,18 @@ def main():
     parser.add_argument("--sweep-steps", type=int, default=params.SWEEP_STEPS, help="Number of load points")
     parser.add_argument("--algo", type=str, default="all", choices=["all", "Tabular", "DQN", "PPO", "A2C", "MCA-D3QN", "MCA-PPO"], help="Algorithm to run")
     parser.add_argument("--wandb", action="store_true", help="Enable Wandb logging")
+    parser.add_argument("--skip-baselines", action="store_true", help="Skip baseline MAC simulation")
+    parser.add_argument("--skip-plots", action="store_true", help="Skip generating plots")
+    parser.add_argument("--out-dir", type=str, default=None, help="Output directory (creates new if None)")
     args = parser.parse_args()
 
-    out_dir = make_output_dir()
-    log_file = open(os.path.join(out_dir, "logs", "experiment.log"), "w")
+    out_dir = args.out_dir if args.out_dir else make_output_dir()
+    os.makedirs(os.path.join(out_dir, "logs"), exist_ok=True)
+    os.makedirs(os.path.join(out_dir, "csv"), exist_ok=True)
+    os.makedirs(os.path.join(out_dir, "checkpoints"), exist_ok=True)
+    os.makedirs(os.path.join(out_dir, "images"), exist_ok=True)
+    
+    log_file = open(os.path.join(out_dir, "logs", f"experiment_{args.algo}.log"), "w")
 
     def log(msg):
         print(msg)
@@ -524,8 +532,15 @@ def main():
         return
 
     # Step 1: Baseline
-    baseline_df = step1_baselines(pps_list, args.seed, log)
-    baseline_df.to_csv(os.path.join(out_dir, "csv", "baseline_results.csv"), index=False)
+    if not args.skip_baselines:
+        baseline_df = step1_baselines(pps_list, args.seed, log)
+        baseline_df.to_csv(os.path.join(out_dir, "csv", "baseline_results.csv"), index=False)
+    else:
+        baseline_path = os.path.join(out_dir, "csv", "baseline_results.csv")
+        if os.path.exists(baseline_path):
+            baseline_df = pd.read_csv(baseline_path)
+        else:
+            baseline_df = pd.DataFrame()
 
     # Step 2: Train
     cp_dir = os.path.join(out_dir, "checkpoints")
@@ -534,7 +549,12 @@ def main():
 
     # Step 3: Evaluate
     eval_df = step3_evaluate(trained_models, pps_list, args.seed, log)
-    eval_df.to_csv(os.path.join(out_dir, "csv", "sarl_evaluation_results.csv"), index=False)
+    
+    if args.algo != "all":
+        eval_csv_path = os.path.join(out_dir, "csv", f"sarl_evaluation_results_{args.algo}.csv")
+    else:
+        eval_csv_path = os.path.join(out_dir, "csv", "sarl_evaluation_results.csv")
+    eval_df.to_csv(eval_csv_path, index=False)
 
     if args.wandb:
         import wandb
@@ -551,7 +571,8 @@ def main():
             })
 
     # Step 4: Plots
-    step4_plots(baseline_df, eval_df, out_dir, log)
+    if not args.skip_plots and not baseline_df.empty and not eval_df.empty:
+        step4_plots(baseline_df, eval_df, out_dir, log)
 
     # Save experiment metadata
     metadata = {

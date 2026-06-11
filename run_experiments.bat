@@ -16,7 +16,7 @@ if %ERRORLEVEL% neq 0 (
 
 REM Login to Wandb with the provided API key
 echo Logging into wandb...
-wandb login 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
+python -m wandb login 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
 if %ERRORLEVEL% neq 0 (
     echo Wandb login failed. Proceeding without wandb...
     set WANDB_FLAG=
