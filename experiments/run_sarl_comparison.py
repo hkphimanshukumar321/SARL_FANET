@@ -161,7 +161,7 @@ def _train_sarl_worker(kwargs):
     if 'lr' in kwargs and kwargs['lr'] is not None:
         tuning_kwargs['learning_rate'] = kwargs['lr']
     if 'batch_size' in kwargs and kwargs['batch_size'] is not None:
-    
+        tuning_kwargs['batch_size'] = kwargs['batch_size']
     from envs.marl_sarl_wrapper import MARLtoSARLWrapper
     from utils.device_manager import resolve_device
 
