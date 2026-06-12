@@ -29,8 +29,7 @@ def test_import_algorithms_mobility():
 def test_import_algorithms_rl():
     from algorithms.rl.rewards import compute_cluster_reward, compute_team_reward
     from algorithms.rl.features_extractor import MCAFeaturesExtractor
-    from algorithms.rl.custom_mca_d3qn import MCABranchingD3QNAgent
-    from algorithms.rl.custom_mca_ppo import MCABranchingPPOAgent
+    from algorithms.rl.custom_mca_ppo import create_mca_ppo
     from algorithms.rl.tabular_qlearning import TabularQLearning
     from algorithms.rl.sb3_baselines import create_sb3_baseline
 

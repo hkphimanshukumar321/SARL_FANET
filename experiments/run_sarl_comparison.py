@@ -1,16 +1,19 @@
 """
-run_sarl_comparison.py -- Unified SARL Experiment Runner
-=========================================================
-Trains and evaluates ALL SARL agents on the MARL environment (MARLMacEnv),
-then generates comparison plots and CSV outputs.
+run_sarl_comparison.py -- SARL on MARL Experiment Runner
+=============================================================
+Trains and evaluates Single-Agent RL (SARL) agents on a Multi-Agent
+environment (MARLMacEnv), using a unified wrapper (MARLtoSARLWrapper).
+This allows central control over distributed UAV agents.
+
+Training Architecture:
+  ALL SARL agents → Monitor(MARLtoSARLWrapper(...)) + DummyVecEnv
 
 Models:
   - Tabular Q-Learning  (MARLtoSARLWrapper → Discrete(2))
   - SB3 DQN             (MARLtoSARLWrapper → Discrete(2))
-  - SB3 PPO             (SARLCentralEnv → MultiDiscrete)
-  - SB3 A2C             (SARLCentralEnv → MultiDiscrete)
-  - MCA-D3QN (Ours)     (SARLCentralEnv → MultiDiscrete branching)
-  - MCA-PPO  (Ours)     (SARLCentralEnv → MultiDiscrete branching)
+  - SB3 PPO             (MARLtoSARLWrapper → Discrete(2))
+  - SB3 A2C             (MARLtoSARLWrapper → Discrete(2))
+  - MCA-D3QN (Ours)     (MARLtoSARLWrapper → Discrete(2), SB3 DuelingDQN)
 
 Usage:
     python experiments/run_sarl_comparison.py
@@ -24,6 +27,7 @@ import json
 import argparse
 import datetime
 import time
+import multiprocessing
 
 import numpy as np
 import pandas as pd
@@ -48,20 +52,12 @@ from configs import config as params
 from configs.cluster_config import ClusterConfig as CC
 from configs.sarl_config import RLConfig
 from envs.burst_scheduler import VALID_RHO_LEVELS, encode_action
+from utils.rich_logger import log_step, print_banner
 
 # =====================================================================
 # Constants
 # =====================================================================
 MAC_NAMES = {0: "TDMA", 1: "CSMA_CA"}
-
-SARL_MODELS = {
-    "Tabular":   {"wrapper": "sarl_wrapper",  "type": "tabular"},
-    "DQN":       {"wrapper": "sarl_wrapper",  "type": "sb3", "algo": "dqn"},
-    "PPO":       {"wrapper": "sarl_central",  "type": "sb3", "algo": "ppo"},
-    "A2C":       {"wrapper": "sarl_central",  "type": "sb3", "algo": "a2c"},
-    "MCA-D3QN":  {"wrapper": "sarl_central",  "type": "mca_d3qn"},
-    "MCA-PPO":   {"wrapper": "sarl_central",  "type": "mca_ppo"},
-}
 
 
 def default_fixed_action(mac_mode: int) -> int:
@@ -139,202 +135,351 @@ def step1_baselines(pps_list, seed, log):
 
 
 # =====================================================================
-# Step 2: Train SARL Models
+# Step 2: Unified Training — Workers
 # =====================================================================
-def step2_train(timesteps, cp_dir, csv_dir, seed, log):
-    from envs.sarl_central_env import SARLCentralEnv
+def _train_sarl_worker(kwargs):
+    """
+    Worker function to train a single SARL algorithm.
+    Runs entirely isolated to prevent multiprocess GPU locking.
+    """
+    algo = kwargs['algo']
+    timesteps = kwargs['timesteps']
+    cp_dir = kwargs['cp_dir']
+    csv_dir = kwargs['csv_dir']
+    seed = kwargs['seed']
+    force_retrain = kwargs['force_retrain']
+    
+    # Extract tuning kwargs cleanly
+    tuning_kwargs = {}
+    if 'lr' in kwargs and kwargs['lr'] is not None:
+        tuning_kwargs['learning_rate'] = kwargs['lr']
+    if 'batch_size' in kwargs and kwargs['batch_size'] is not None:
+        tuning_kwargs['batch_size'] = kwargs['batch_size']
+
     from envs.marl_sarl_wrapper import MARLtoSARLWrapper
     from utils.device_manager import resolve_device
 
-    log("\n" + "=" * 60)
-    log(f" STEP 2: Training SARL Models ({timesteps} timesteps)")
-    log("=" * 60)
+    pid = os.getpid()
+    train_device = resolve_device("train")
+    print(f"  [Worker {pid}] SARL training: {algo.upper()} on device: {train_device}")
 
-    device = resolve_device("train")
-    trained_models = {}
-
-    # --- Tabular Q-Learning ---
-    if getattr(params, "RUN_TABULAR_QLEARNING", True):
-        log("  Training: Tabular Q-Learning (MARLtoSARLWrapper)")
+    if algo == 'tabular':
         from algorithms.rl.tabular_qlearning import TabularQLearning
+        save_path = os.path.join(cp_dir, "unified_tabular_model.json")
+        if (not force_retrain) and os.path.exists(save_path):
+            return f"{algo.upper()} skipped (checkpoint)"
 
         env = MARLtoSARLWrapper(seed=seed)
-        agent = TabularQLearning(action_dim=2, num_scalar_features=14, seed=seed)
-        obs, _ = env.reset()
-        rewards_log = []
+        model = TabularQLearning(seed=seed)
+        obs, _ = env.reset(seed=seed)
+        rewards_log, steps_log = [], []
+        ep_reward = 0.0
 
-        for step in tqdm(range(timesteps), desc="Tabular", unit="step"):
-            action, _ = agent.predict(obs, deterministic=False)
-            next_obs, reward, terminated, truncated, info = env.step(int(action))
-            agent.learn(obs, int(action), reward, next_obs, bool(terminated or truncated))
+        pbar = tqdm(total=timesteps, desc=f"TABULAR", unit="step", leave=True)
+        for step in range(timesteps):
+            action, _ = model.predict(obs, deterministic=False)
+            next_obs, reward, terminated, truncated, _ = env.step(action)
+            model.learn(obs, action, reward, next_obs, done=(terminated or truncated))
             obs = next_obs
-            rewards_log.append(reward)
+            ep_reward += reward
+            pbar.update(1)
             if terminated or truncated:
                 obs, _ = env.reset()
+                rewards_log.append(ep_reward)
+                steps_log.append(step + 1)
+                pbar.set_postfix({"R": f"{ep_reward:.2f}"})
+                ep_reward = 0.0
+        pbar.close()
+        model.save(save_path)
+        if steps_log:
+            df = pd.DataFrame({"step": steps_log, "reward": rewards_log})
+            df.to_csv(os.path.join(csv_dir, "tabular_training_rewards.csv"), index=False)
+            df.to_csv(os.path.join(cp_dir, "tabular_training_rewards.csv"), index=False)
+        return f"{algo.upper()} trained."
 
-        save_path = os.path.join(cp_dir, "tabular_model.json")
-        agent.save(save_path)
-        trained_models["Tabular"] = ("tabular", agent)
-        log(f"    Saved: {save_path}")
-
-    # --- SB3 DQN (Discrete wrapper) ---
-    if getattr(params, "RUN_DQN", True):
-        log("  Training: DQN (MARLtoSARLWrapper)")
-        from stable_baselines3 import DQN
+    elif algo in ['dqn', 'ppo', 'a2c']:
+        from algorithms.rl.sb3_baselines import create_sb3_baseline
         from stable_baselines3.common.monitor import Monitor
+        from stable_baselines3.common.vec_env import DummyVecEnv
+        from stable_baselines3.common.callbacks import BaseCallback
+
+        save_path = os.path.join(cp_dir, f"unified_{algo}_model")
+        if (not force_retrain) and os.path.exists(save_path + ".zip"):
+            return f"{algo.upper()} skipped (checkpoint)"
+
+        class RewardLogger(BaseCallback):
+            def __init__(self, total):
+                super().__init__(verbose=0)
+                self.rewards, self.steps = [], []
+                self.pbar = tqdm(total=total, desc=algo.upper(), unit="step", leave=True)
+            def _on_step(self):
+                self.pbar.update(1)
+                if "episode" in self.locals.get("infos", [{}])[0]:
+                    ep = self.locals["infos"][0]["episode"]
+                    self.rewards.append(ep["r"])
+                    self.steps.append(self.num_timesteps)
+                    self.pbar.set_postfix({"R": f"{ep['r']:.2f}"})
+                return True
+            def _on_training_end(self):
+                self.pbar.close()
 
         env = Monitor(MARLtoSARLWrapper(seed=seed))
-        model = DQN("MultiInputPolicy", env, learning_rate=1e-3, buffer_size=100000,
-                     batch_size=64, gamma=0.99, device=device, seed=seed, verbose=0)
-        model.learn(total_timesteps=timesteps, progress_bar=True)
-        save_path = os.path.join(cp_dir, "dqn_model")
+        vec_env = DummyVecEnv([lambda: env])
+        model = create_sb3_baseline(vec_env, algo_name=algo, seed=seed, **tuning_kwargs)
+        cb = RewardLogger(timesteps)
+        model.learn(total_timesteps=timesteps, callback=cb, progress_bar=False)
         model.save(save_path)
-        trained_models["DQN"] = ("sb3", model)
-        log(f"    Saved: {save_path}")
+        if cb.steps:
+            df = pd.DataFrame({"step": cb.steps, "reward": cb.rewards})
+            df.to_csv(os.path.join(csv_dir, f"{algo}_training_rewards.csv"), index=False)
+            df.to_csv(os.path.join(cp_dir, f"{algo}_training_rewards.csv"), index=False)
+        return f"{algo.upper()} trained."
 
-    # --- SB3 PPO (SARLCentralEnv) ---
-    if getattr(params, "RUN_PPO", True):
-        log("  Training: PPO (SARLCentralEnv)")
-        from stable_baselines3 import PPO
-        from stable_baselines3.common.monitor import Monitor
-
-        env = Monitor(SARLCentralEnv(seed=seed))
-        model = PPO("MultiInputPolicy", env, learning_rate=3e-4, n_steps=128,
-                     batch_size=64, n_epochs=10, gamma=0.99, device=device, seed=seed, verbose=0)
-        model.learn(total_timesteps=timesteps, progress_bar=True)
-        save_path = os.path.join(cp_dir, "ppo_model")
-        model.save(save_path)
-        trained_models["PPO"] = ("sb3", model)
-        log(f"    Saved: {save_path}")
-
-    # --- SB3 A2C (SARLCentralEnv) ---
-    if getattr(params, "RUN_A2C", True):
-        log("  Training: A2C (SARLCentralEnv)")
-        from stable_baselines3 import A2C
-        from stable_baselines3.common.monitor import Monitor
-
-        env = Monitor(SARLCentralEnv(seed=seed))
-        model = A2C("MultiInputPolicy", env, learning_rate=7e-4, n_steps=5,
-                     gamma=0.99, device=device, seed=seed, verbose=0)
-        model.learn(total_timesteps=timesteps, progress_bar=True)
-        save_path = os.path.join(cp_dir, "a2c_model")
-        model.save(save_path)
-        trained_models["A2C"] = ("sb3", model)
-        log(f"    Saved: {save_path}")
-
-    # --- MCA-D3QN (SARLCentralEnv) ---
-    if getattr(params, "RUN_CUSTOM_RL", True):
-        log("  Training: MCA-D3QN (SARLCentralEnv)")
+    elif algo == 'mca_d3qn':
         from algorithms.rl.custom_mca_d3qn import create_mca_d3qn
+        from stable_baselines3.common.monitor import Monitor
+        from stable_baselines3.common.vec_env import DummyVecEnv
+        from stable_baselines3.common.callbacks import BaseCallback
 
-        env = SARLCentralEnv(seed=seed)
-        model = create_mca_d3qn(env, seed=seed, device=device)
-        model.learn(total_timesteps=timesteps)
-        save_path = os.path.join(cp_dir, "mca_d3qn_model")
+        save_path = os.path.join(cp_dir, "unified_mca_d3qn_model")
+        if (not force_retrain) and os.path.exists(save_path + ".zip"):
+            return f"MCA-D3QN skipped (checkpoint)"
+
+        class RewardLogger(BaseCallback):
+            def __init__(self, total):
+                super().__init__(verbose=0)
+                self.rewards, self.steps = [], []
+                self.pbar = tqdm(total=total, desc="MCA-D3QN", unit="step", leave=True)
+            def _on_step(self):
+                self.pbar.update(1)
+                if "episode" in self.locals.get("infos", [{}])[0]:
+                    ep = self.locals["infos"][0]["episode"]
+                    self.rewards.append(ep["r"])
+                    self.steps.append(self.num_timesteps)
+                    self.pbar.set_postfix({"R": f"{ep['r']:.2f}"})
+                return True
+            def _on_training_end(self):
+                self.pbar.close()
+
+        env = Monitor(MARLtoSARLWrapper(seed=seed))
+        vec_env = DummyVecEnv([lambda: env])
+        model = create_mca_d3qn(vec_env, seed=seed, **tuning_kwargs)
+        cb = RewardLogger(timesteps)
+        model.learn(total_timesteps=timesteps, callback=cb, progress_bar=False)
         model.save(save_path)
-        trained_models["MCA-D3QN"] = ("mca_d3qn", model)
-        log(f"    Saved: {save_path}")
+        if cb.steps:
+            df = pd.DataFrame({"step": cb.steps, "reward": cb.rewards})
+            df.to_csv(os.path.join(csv_dir, "mca_d3qn_training_rewards.csv"), index=False)
+            df.to_csv(os.path.join(cp_dir, "mca_d3qn_training_rewards.csv"), index=False)
+        return f"MCA-D3QN trained."
 
-    # --- MCA-PPO (SARLCentralEnv) ---
-    if getattr(params, "RUN_MCA_PPO", True):
-        log("  Training: MCA-PPO (SARLCentralEnv)")
+    elif algo == 'mca_ppo':
         from algorithms.rl.custom_mca_ppo import create_mca_ppo
+        from stable_baselines3.common.monitor import Monitor
+        from stable_baselines3.common.vec_env import DummyVecEnv
+        from stable_baselines3.common.callbacks import BaseCallback
 
-        env = SARLCentralEnv(seed=seed)
-        model = create_mca_ppo(env, seed=seed, device=device)
-        model.learn(total_timesteps=timesteps)
-        save_path = os.path.join(cp_dir, "mca_ppo_model")
+        save_path = os.path.join(cp_dir, "unified_mca_ppo_model")
+        if (not force_retrain) and os.path.exists(save_path + ".zip"):
+            return f"MCA-PPO skipped (checkpoint)"
+
+        class RewardLogger(BaseCallback):
+            def __init__(self, total):
+                super().__init__(verbose=0)
+                self.rewards, self.steps = [], []
+                self.pbar = tqdm(total=total, desc="MCA-PPO", unit="step", leave=True)
+            def _on_step(self):
+                self.pbar.update(1)
+                if "episode" in self.locals.get("infos", [{}])[0]:
+                    ep = self.locals["infos"][0]["episode"]
+                    self.rewards.append(ep["r"])
+                    self.steps.append(self.num_timesteps)
+                    self.pbar.set_postfix({"R": f"{ep['r']:.2f}"})
+                return True
+            def _on_training_end(self):
+                self.pbar.close()
+
+        env = Monitor(MARLtoSARLWrapper(seed=seed))
+        vec_env = DummyVecEnv([lambda: env])
+        model = create_mca_ppo(vec_env, seed=seed, **tuning_kwargs)
+        cb = RewardLogger(timesteps)
+        model.learn(total_timesteps=timesteps, callback=cb, progress_bar=False)
         model.save(save_path)
-        trained_models["MCA-PPO"] = ("mca_ppo", model)
-        log(f"    Saved: {save_path}")
+        if cb.steps:
+            df = pd.DataFrame({"step": cb.steps, "reward": cb.rewards})
+            df.to_csv(os.path.join(csv_dir, "mca_ppo_training_rewards.csv"), index=False)
+            df.to_csv(os.path.join(cp_dir, "mca_ppo_training_rewards.csv"), index=False)
+        return f"MCA-PPO trained."
 
-    log(f"  Trained {len(trained_models)} models total.")
-    return trained_models
+    return f"Unknown SARL algo: {algo}"
 
 
-# =====================================================================
-# Step 3: Evaluate all SARL Models
-# =====================================================================
-def step3_evaluate(trained_models, pps_list, seed, log):
-    from envs.marl_mac_env import MARLMacEnv
-    from envs.sarl_central_env import SARLCentralEnv
-    from envs.marl_sarl_wrapper import MARLtoSARLWrapper
+def _dispatch_training(kw):
+    """Module-level dispatch for multiprocessing (must be picklable)."""
+    return _train_sarl_worker(kw)
 
+
+def step2_train(out_dir, sarl_timesteps, log,
+                force_retrain=False, use_checkpoints_only=False, **kwargs):
+    """Launch all training jobs across processes."""
     log("\n" + "=" * 60)
-    log(" STEP 3: Evaluating SARL Models")
+    log(" STEP 2: Training SARL agents on MARL env")
     log("=" * 60)
 
-    all_results = []
+    cp_dir = os.path.join(out_dir, "checkpoints")
+    os.makedirs(cp_dir, exist_ok=True)
+    csv_dir = os.path.join(out_dir, "csv")
 
-    for model_name, (model_type, model) in trained_models.items():
-        log(f"  Evaluating: {model_name}")
+    # Build task lists
+    sarl_tasks = []
+    if getattr(params, "RUN_TABULAR_QLEARNING", True): sarl_tasks.append('tabular')
+    if getattr(params, "RUN_DQN", True): sarl_tasks.append('dqn')
+    if getattr(params, "RUN_PPO", True): sarl_tasks.append('ppo')
+    if getattr(params, "RUN_A2C", True): sarl_tasks.append('a2c')
+    if getattr(params, "RUN_CUSTOM_RL", True): 
+        sarl_tasks.append('mca_d3qn')
+        sarl_tasks.append('mca_ppo')
 
-        for idx, pps in enumerate(tqdm(pps_list, desc=model_name, unit="load")):
-            params.SWEEP_MAX_PPS = int(pps)
-            setattr(params, "OFFERED_PPS", int(pps))
+    all_kwargs = []
+    for algo in sarl_tasks:
+        kw = {
+            'algo': algo, 'timesteps': sarl_timesteps,
+            'cp_dir': cp_dir, 'csv_dir': csv_dir, 'seed': params.SEED,
+            'force_retrain': force_retrain,
+        }
+        kw.update(kwargs) # inject tuning args
+        all_kwargs.append(kw)
 
-            # Select appropriate env
-            uses_wrapper = model_type in ("tabular", "sb3") and model_name in ("Tabular", "DQN")
+    n_workers = min(os.cpu_count() or 1, len(all_kwargs))
+    log(f"  Launching {len(all_kwargs)} training jobs on {n_workers} workers")
+    log(f"  SARL: {sarl_tasks} ({sarl_timesteps} timesteps each)")
 
-            if uses_wrapper:
-                env = MARLtoSARLWrapper(seed=seed + idx)
-            else:
-                env = SARLCentralEnv(seed=seed + idx)
+    if use_checkpoints_only and not force_retrain:
+        log("  Checkpoint policy: USE_CHECKPOINTS_ONLY (training skipped)")
+        return cp_dir
 
-            obs, _ = env.reset(seed=seed + idx)
-            ep_thr, ep_del = [], []
-            ep_drops, ep_col = 0, 0
-            ep_rewards = []
+    with multiprocessing.Pool(processes=n_workers) as pool:
+        for result in pool.imap_unordered(_dispatch_training, all_kwargs):
+            log(f"    --> {result}")
 
-            max_steps = 200
-            for step_i in range(max_steps):
-                if model_type == "tabular":
-                    action, _ = model.predict(obs, deterministic=True)
-                    action = int(action)
-                elif model_type == "sb3":
-                    action, _ = model.predict(obs, deterministic=True)
-                else:
-                    action, _ = model.predict(obs, deterministic=True)
+    log("  All training complete.")
+    return cp_dir
 
-                obs, reward, terminated, truncated, info = env.step(action)
-                ep_rewards.append(reward)
 
-                if uses_wrapper:
-                    raw_infos = info.get("raw_infos", {})
-                    agg = aggregate_cluster_infos(raw_infos)
-                else:
-                    agg = {
-                        "throughput_mbps": info.get("global_th", 0.0),
-                        "delay_ms": 0.0,
-                        "drops": info.get("global_drops", 0.0),
-                        "collisions": info.get("global_collisions", 0.0),
-                    }
-                    raw_infos = info.get("raw_infos", {})
-                    if raw_infos:
-                        alive = [i for i in raw_infos.values() if i.get("alive", False)]
-                        if alive:
-                            agg["delay_ms"] = float(np.mean([i.get("delay_ms", 0.0) for i in alive]))
+# =====================================================================
+# Step 3: Evaluate all Models
+# =====================================================================
+def step3_evaluate(pps_list, cp_dir, out_dir, seed, log, deterministic_eval=True):
+    """Load all models and evaluate across traffic sweep on MARL env."""
+    log("\n" + "=" * 60)
+    log(" STEP 3: Evaluation Sweep")
+    log("=" * 60)
 
-                ep_thr.append(agg["throughput_mbps"])
-                ep_del.append(agg["delay_ms"])
-                ep_drops += agg["drops"]
-                ep_col += agg["collisions"]
+    import torch
+    from envs.marl_mac_env import MARLMacEnv
+    from envs.marl_sarl_wrapper import MARLtoSARLWrapper
 
-                if terminated or truncated:
-                    break
+    models = {}  # name → model
 
-            n_steps = max(len(ep_thr), 1)
-            all_results.append({
-                "Model": model_name,
-                "Offered_Load_pps": int(pps),
-                "Throughput_Mbps": round(sum(ep_thr) / n_steps, 6),
-                "Delay_ms": round(sum(ep_del) / n_steps, 4),
-                "Drops": int(ep_drops),
-                "Collisions": int(ep_col),
-                "Avg_Reward": round(sum(ep_rewards) / n_steps, 6),
+    # --- Load SARL models ---
+    def _try_load_sb3(name, cls, filename):
+        path = os.path.join(cp_dir, filename)
+        if os.path.exists(path + ".zip"):
+            models[name] = cls.load(path)
+            log(f"  Loaded SARL: {name}")
+
+    from stable_baselines3 import DQN, PPO, A2C
+    if getattr(params, "RUN_CUSTOM_RL", True):
+        _try_load_sb3("MCA-D3QN", DQN, "unified_mca_d3qn_model")
+        _try_load_sb3("MCA-PPO", PPO, "unified_mca_ppo_model")
+    if getattr(params, "RUN_DQN", True):
+        _try_load_sb3("DQN", DQN, "unified_dqn_model")
+    if getattr(params, "RUN_PPO", True):
+        _try_load_sb3("PPO", PPO, "unified_ppo_model")
+    if getattr(params, "RUN_A2C", True):
+        _try_load_sb3("A2C", A2C, "unified_a2c_model")
+
+    if getattr(params, "RUN_TABULAR_QLEARNING", True):
+        tab_path = os.path.join(cp_dir, "unified_tabular_model.json")
+        if os.path.exists(tab_path):
+            from algorithms.rl.tabular_qlearning import TabularQLearning
+            tab = TabularQLearning()
+            tab.load(tab_path)
+            tab.epsilon = 0.0
+            models["Tabular"] = tab
+            log(f"  Loaded SARL: Tabular")
+
+    if not models:
+        log("  WARNING: No models found. Skipping evaluation.")
+        return pd.DataFrame()
+
+    log(f"  Evaluating {len(models)} models across {len(pps_list)} load points")
+
+    # --- Evaluation loop ---
+    sarl_wrapper = MARLtoSARLWrapper()
+    results = []
+
+    for pps in tqdm(pps_list, desc="Eval Sweep", unit="load"):
+        params.SWEEP_MAX_PPS = pps
+        setattr(params, "OFFERED_PPS", int(pps))
+
+        for model_name, model in models.items():
+            total_thr, total_delay, total_drops, total_collisions, steps = 0, 0, 0, 0, 0
+            mac_choices = []
+            avg_thr, avg_delay, dom_mac = 0.0, 0.0, "CSMA"
+            total_inf_time = 0.0
+            inf_steps = 0
+
+            obs, _ = sarl_wrapper.reset()
+            done = False
+
+            while not done:
+                t0 = time.perf_counter()
+                action, _ = model.predict(obs, deterministic=deterministic_eval)
+                t1 = time.perf_counter()
+                total_inf_time += (t1 - t0)
+                inf_steps += 1
+
+                obs, reward, terminated, truncated, info = sarl_wrapper.step(action)
+                done = terminated or truncated
+                mac_choices.append(int(action))
+
+                raw = info.get("raw_infos", {})
+                if raw:
+                    any_i = next(iter(raw.values()), {})
+                    total_thr += any_i.get("throughput", 0)
+                    total_delay += any_i.get("delay_ms", 0)
+                    total_drops += any_i.get("drops", 0)
+                    total_collisions += any_i.get("collisions", 0)
+                steps += 1
+
+            avg_thr = total_thr / max(steps, 1)
+            avg_delay = total_delay / max(steps, 1)
+            dom_mac = "TDMA" if mac_choices.count(0) > mac_choices.count(1) else "CSMA"
+
+            tdma_count = int(mac_choices.count(0))
+            csma_count = int(mac_choices.count(1))
+            total_count = max(tdma_count + csma_count, 1)
+            avg_inf_ms = (total_inf_time / max(inf_steps, 1)) * 1000.0
+
+            results.append({
+                'Model': model_name,
+                'Offered_Load_pps': pps,
+                'Throughput_Mbps': round(avg_thr, 4),
+                'Delay_ms': round(avg_delay, 4),
+                'Drops': total_drops,
+                'Collisions': total_collisions,
+                'Dominant_MAC': dom_mac,
+                'TDMA_Share': round(tdma_count / total_count, 4),
+                'CSMA_Share': round(csma_count / total_count, 4),
+                'Avg_Inference_ms': round(avg_inf_ms, 4),
             })
 
-    return pd.DataFrame(all_results)
+    df = pd.DataFrame(results)
+    csv_path = os.path.join(out_dir, "csv", "unified_eval_sweep.csv")
+    df.to_csv(csv_path, index=False)
+    log(f"  Saved: {csv_path}")
+    return df
 
 
 # =====================================================================
@@ -346,94 +491,85 @@ def step4_plots(baseline_df, eval_df, out_dir, log):
     log("=" * 60)
 
     img_dir = os.path.join(out_dir, "images")
-    models = eval_df["Model"].unique()
-    colors = plt.cm.tab10(np.linspace(0, 1, len(models) + 2))
 
-    # --- Throughput vs Load ---
-    fig, ax = plt.subplots(figsize=(12, 7))
-    ax.plot(baseline_df["Offered_Load_pps"], baseline_df["TDMA_Throughput_Mbps"],
-            "--", color="gray", alpha=0.6, label="TDMA (Fixed)", linewidth=2)
-    ax.plot(baseline_df["Offered_Load_pps"], baseline_df["CSMA_Throughput_Mbps"],
-            "--", color="lightcoral", alpha=0.6, label="CSMA (Fixed)", linewidth=2)
+    if eval_df.empty:
+        log("  No evaluation data. Skipping.")
+        return
 
-    for i, model_name in enumerate(models):
-        mdf = eval_df[eval_df["Model"] == model_name]
-        ax.plot(mdf["Offered_Load_pps"], mdf["Throughput_Mbps"],
-                "-o", color=colors[i], label=model_name, linewidth=2, markersize=5)
+    # --- Throughput comparison ---
+    fig, ax = plt.subplots(figsize=(12, 6))
+    if not baseline_df.empty:
+        ax.plot(baseline_df['Offered_Load_pps'], baseline_df['TDMA_Throughput_Mbps'],
+                'b--', label='TDMA (Baseline)', alpha=0.5, linewidth=1.5)
+        ax.plot(baseline_df['Offered_Load_pps'], baseline_df['CSMA_Throughput_Mbps'],
+                'r--', label='CSMA/CA (Baseline)', alpha=0.5, linewidth=1.5)
 
-    ax.set_xlabel("Offered Load (pps)", fontsize=13)
-    ax.set_ylabel("Throughput (Mbps)", fontsize=13)
-    ax.set_title("SARL Model Comparison: Throughput vs. Traffic Load", fontsize=14, fontweight="bold")
-    ax.legend(fontsize=10)
+    rl_models = eval_df['Model'].unique()
+    colors = plt.cm.tab10(np.linspace(0, 1, max(len(rl_models), 1)))
+    for i, model_name in enumerate(rl_models):
+        sub = eval_df[eval_df['Model'] == model_name]
+        ax.plot(sub['Offered_Load_pps'], sub['Throughput_Mbps'],
+                linestyle='-', marker='o', color=colors[i],
+                label=f"SARL: {model_name}", linewidth=2, markersize=4)
+
+    ax.set_xlabel("Offered Load (pps)")
+    ax.set_ylabel("Throughput (Mbps)")
+    ax.set_title("SARL Comparison — Throughput")
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(os.path.join(img_dir, "throughput_comparison.png"), dpi=150)
+    plt.savefig(os.path.join(img_dir, "unified_throughput_comparison.png"), dpi=150)
     plt.close()
 
-    # --- Delay vs Load ---
-    fig, ax = plt.subplots(figsize=(12, 7))
-    ax.plot(baseline_df["Offered_Load_pps"], baseline_df["TDMA_Delay_s"] * 1000,
-            "--", color="gray", alpha=0.6, label="TDMA (Fixed)", linewidth=2)
-    ax.plot(baseline_df["Offered_Load_pps"], baseline_df["CSMA_Delay_s"] * 1000,
-            "--", color="lightcoral", alpha=0.6, label="CSMA (Fixed)", linewidth=2)
+    # --- Delay comparison ---
+    fig, ax = plt.subplots(figsize=(12, 6))
+    if not baseline_df.empty:
+        ax.plot(baseline_df['Offered_Load_pps'], baseline_df['TDMA_Delay_s'] * 1000,
+                'b--', label='TDMA (Baseline)', alpha=0.5, linewidth=1.5)
+        ax.plot(baseline_df['Offered_Load_pps'], baseline_df['CSMA_Delay_s'] * 1000,
+                'r--', label='CSMA/CA (Baseline)', alpha=0.5, linewidth=1.5)
 
-    for i, model_name in enumerate(models):
-        mdf = eval_df[eval_df["Model"] == model_name]
-        ax.plot(mdf["Offered_Load_pps"], mdf["Delay_ms"],
-                "-o", color=colors[i], label=model_name, linewidth=2, markersize=5)
+    for i, model_name in enumerate(rl_models):
+        sub = eval_df[eval_df['Model'] == model_name]
+        ax.plot(sub['Offered_Load_pps'], sub['Delay_ms'],
+                linestyle='-', marker='o', color=colors[i],
+                label=f"SARL: {model_name}", linewidth=2, markersize=4)
 
-    ax.set_xlabel("Offered Load (pps)", fontsize=13)
-    ax.set_ylabel("Delay (ms)", fontsize=13)
-    ax.set_title("SARL Model Comparison: Delay vs. Traffic Load", fontsize=14, fontweight="bold")
-    ax.legend(fontsize=10)
+    ax.set_xlabel("Offered Load (pps)")
+    ax.set_ylabel("Delay (ms)")
+    ax.set_title("SARL Comparison — Delay")
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
-    plt.savefig(os.path.join(img_dir, "delay_comparison.png"), dpi=150)
+    plt.savefig(os.path.join(img_dir, "unified_delay_comparison.png"), dpi=150)
     plt.close()
 
-    # --- Drops vs Load ---
-    fig, ax = plt.subplots(figsize=(12, 7))
-    ax.plot(baseline_df["Offered_Load_pps"], baseline_df["TDMA_Drops"],
-            "--", color="gray", alpha=0.6, label="TDMA (Fixed)", linewidth=2)
-    ax.plot(baseline_df["Offered_Load_pps"], baseline_df["CSMA_Drops"],
-            "--", color="lightcoral", alpha=0.6, label="CSMA (Fixed)", linewidth=2)
+    # --- MAC Selection per model ---
+    fig, ax = plt.subplots(figsize=(12, 6))
+    model_names = eval_df['Model'].unique()
+    tdma_pcts, csma_pcts = [], []
+    for m in model_names:
+        sub = eval_df[eval_df['Model'] == m]
+        tdma_pct = (sub['Dominant_MAC'] == 'TDMA').mean() * 100
+        tdma_pcts.append(tdma_pct)
+        csma_pcts.append(100 - tdma_pct)
 
-    for i, model_name in enumerate(models):
-        mdf = eval_df[eval_df["Model"] == model_name]
-        ax.plot(mdf["Offered_Load_pps"], mdf["Drops"],
-                "-o", color=colors[i], label=model_name, linewidth=2, markersize=5)
-
-    ax.set_xlabel("Offered Load (pps)", fontsize=13)
-    ax.set_ylabel("Packet Drops", fontsize=13)
-    ax.set_title("SARL Model Comparison: Drops vs. Traffic Load", fontsize=14, fontweight="bold")
-    ax.legend(fontsize=10)
-    ax.grid(True, alpha=0.3)
+    y_pos = np.arange(len(model_names))
+    ax.barh(y_pos, tdma_pcts, color='tab:green', alpha=0.9, label='TDMA')
+    ax.barh(y_pos, csma_pcts, left=tdma_pcts, color='tab:purple', alpha=0.75, label='CSMA/CA')
+    ax.set_yticks(y_pos)
+    ax.set_yticklabels(model_names)
+    ax.set_xlabel("Selection share (%)")
+    ax.set_title("MAC Selection Preference per Agent")
+    ax.set_xlim(0, 100)
+    ax.axvline(50, color='gray', linestyle='--', alpha=0.5)
+    ax.legend(loc='lower right')
+    ax.grid(True, alpha=0.3, axis='x')
     plt.tight_layout()
-    plt.savefig(os.path.join(img_dir, "drops_comparison.png"), dpi=150)
+    plt.savefig(os.path.join(img_dir, "mac_selection_preference.png"), dpi=150)
     plt.close()
 
-    # --- Collisions vs Load ---
-    fig, ax = plt.subplots(figsize=(12, 7))
-    ax.plot(baseline_df["Offered_Load_pps"], baseline_df["TDMA_Collisions"],
-            "--", color="gray", alpha=0.6, label="TDMA (Fixed)", linewidth=2)
-    ax.plot(baseline_df["Offered_Load_pps"], baseline_df["CSMA_Collisions"],
-            "--", color="lightcoral", alpha=0.6, label="CSMA (Fixed)", linewidth=2)
-
-    for i, model_name in enumerate(models):
-        mdf = eval_df[eval_df["Model"] == model_name]
-        ax.plot(mdf["Offered_Load_pps"], mdf["Collisions"],
-                "-o", color=colors[i], label=model_name, linewidth=2, markersize=5)
-
-    ax.set_xlabel("Offered Load (pps)", fontsize=13)
-    ax.set_ylabel("Collisions", fontsize=13)
-    ax.set_title("SARL Model Comparison: Collisions vs. Traffic Load", fontsize=14, fontweight="bold")
-    ax.legend(fontsize=10)
-    ax.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(os.path.join(img_dir, "collisions_comparison.png"), dpi=150)
-    plt.close()
-
-    # --- Summary Bar Chart (avg metrics across all loads) ---
+    # --- Summary Bar Chart ---
     fig, axes = plt.subplots(1, 4, figsize=(20, 5))
     metrics = ["Throughput_Mbps", "Delay_ms", "Drops", "Collisions"]
     titles = ["Avg Throughput (Mbps)", "Avg Delay (ms)", "Total Drops", "Total Collisions"]
@@ -446,7 +582,7 @@ def step4_plots(baseline_df, eval_df, out_dir, log):
         ax.tick_params(axis="x", rotation=45)
         ax.grid(True, alpha=0.3, axis="y")
 
-    plt.suptitle("SARL Model Summary", fontsize=14, fontweight="bold")
+    plt.suptitle("SARL Summary", fontsize=14, fontweight="bold")
     plt.tight_layout()
     plt.savefig(os.path.join(img_dir, "summary_bar_chart.png"), dpi=150)
     plt.close()
@@ -458,63 +594,69 @@ def step4_plots(baseline_df, eval_df, out_dir, log):
 # Main
 # =====================================================================
 def main():
-    parser = argparse.ArgumentParser(description="SARL Model Comparison on MARL Environment")
+    parser = argparse.ArgumentParser(description="SARL Experiment on MARL Environment")
+    parser.add_argument("--algo", type=str, default="all", help="Algorithm to train (for parallel runner)")
     parser.add_argument("--dry-run", action="store_true", help="Sanity check without training")
-    parser.add_argument("--timesteps", type=int, default=RLConfig.TOTAL_TIMESTEPS, help="Training timesteps")
+    parser.add_argument("--timesteps", type=int, default=RLConfig.TOTAL_TIMESTEPS, help="SARL training timesteps")
     parser.add_argument("--seed", type=int, default=params.SEED, help="Random seed")
     parser.add_argument("--sweep-steps", type=int, default=params.SWEEP_STEPS, help="Number of load points")
-    parser.add_argument("--algo", type=str, default="all", choices=["all", "Tabular", "DQN", "PPO", "A2C", "MCA-D3QN", "MCA-PPO"], help="Algorithm to run")
-    parser.add_argument("--wandb", action="store_true", help="Enable Wandb logging")
+    parser.add_argument("--force-retrain", action="store_true", help="Ignore existing checkpoints")
+    parser.add_argument("--skip-training", action="store_true", help="Skip training (use existing checkpoints)")
     parser.add_argument("--skip-baselines", action="store_true", help="Skip baseline MAC simulation")
     parser.add_argument("--skip-plots", action="store_true", help="Skip generating plots")
     parser.add_argument("--out-dir", type=str, default=None, help="Output directory (creates new if None)")
+    parser.add_argument("--stochastic-eval", action="store_true", help="Use stochastic evaluation")
+    parser.add_argument("--wandb", action="store_true", help="Use WandB")
+    
+    # Tuning / Profiling Args
+    parser.add_argument("--profile", action="store_true", help="Run with cProfile")
+    parser.add_argument("--lr", type=float, default=None, help="Learning rate (tuning)")
+    parser.add_argument("--batch-size", type=int, default=None, help="Batch size (tuning)")
     args = parser.parse_args()
 
+    if args.profile:
+        import cProfile
+        import pstats
+        profiler = cProfile.Profile()
+        profiler.enable()
+        main_execution(args)
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumtime')
+        stats.dump_stats(os.path.join(args.out_dir if args.out_dir else "results", f"sarl_profile_{args.algo}.prof"))
+    else:
+        main_execution(args)
+
+
+def main_execution(args):
     out_dir = args.out_dir if args.out_dir else make_output_dir()
-    os.makedirs(os.path.join(out_dir, "logs"), exist_ok=True)
-    os.makedirs(os.path.join(out_dir, "csv"), exist_ok=True)
-    os.makedirs(os.path.join(out_dir, "checkpoints"), exist_ok=True)
-    os.makedirs(os.path.join(out_dir, "images"), exist_ok=True)
-    
-    log_file = open(os.path.join(out_dir, "logs", f"experiment_{args.algo}.log"), "w")
+    for sub in ["images", "csv", "checkpoints", "logs"]:
+        os.makedirs(os.path.join(out_dir, sub), exist_ok=True)
+
+    log_file = open(os.path.join(out_dir, "logs", "experiment.log"), "w")
 
     def log(msg):
         print(msg)
         log_file.write(msg + "\n")
         log_file.flush()
 
+    print_banner(
+        "SARL EXPERIMENT RUNNER",
+        f"SARL agents on MARL Environment | {datetime.datetime.now().isoformat()}",
+    )
+
     log("=" * 60)
-    log(" SARL Models on MARL Environment — Comparison Experiment")
     log(f" Timestamp: {datetime.datetime.now().isoformat()}")
     log(f" Output: {out_dir}")
-    log(f" Timesteps: {args.timesteps}")
+    log(f" SARL Timesteps: {args.timesteps}")
     log(f" Seed: {args.seed}")
-    log(f" Algo: {args.algo}")
     log(f" N={params.N}, PHY={params.PHY_RATE_BPS/1e6:.0f}Mbps, Fading={params.FADING_MODEL}")
     log("=" * 60)
-
-    if args.algo != "all":
-        params.RUN_TABULAR_QLEARNING = (args.algo == "Tabular")
-        params.RUN_DQN = (args.algo == "DQN")
-        params.RUN_PPO = (args.algo == "PPO")
-        params.RUN_A2C = (args.algo == "A2C")
-        params.RUN_CUSTOM_RL = (args.algo == "MCA-D3QN")
-        params.RUN_MCA_PPO = (args.algo == "MCA-PPO")
-
-    if args.wandb:
-        import wandb
-        wandb.init(
-            project="sarl_comparison",
-            name=f"{args.algo}_{args.seed}",
-            config=vars(args)
-        )
 
     pps_list = np.linspace(params.SWEEP_MIN_PPS, params.SWEEP_MAX_PPS, args.sweep_steps).astype(int)
 
     if args.dry_run:
         log("\n  [DRY RUN] Verifying imports and environment setup...")
         from envs.marl_mac_env import MARLMacEnv
-        from envs.sarl_central_env import SARLCentralEnv
         from envs.marl_sarl_wrapper import MARLtoSARLWrapper
 
         env1 = MARLtoSARLWrapper(seed=args.seed)
@@ -522,12 +664,7 @@ def main():
         log(f"    MARLtoSARLWrapper: obs scalars shape = {obs1['scalars'].shape}")
         log(f"    Action space: {env1.action_space}")
 
-        env2 = SARLCentralEnv(seed=args.seed)
-        obs2, _ = env2.reset()
-        log(f"    SARLCentralEnv: obs scalars shape = {obs2['scalars'].shape}")
-        log(f"    Action space: {env2.action_space}")
-
-        log("  [DRY RUN] All imports and environments OK. Exiting.")
+        log("  [DRY RUN] All imports and environments OK.")
         log_file.close()
         return
 
@@ -543,32 +680,24 @@ def main():
             baseline_df = pd.DataFrame()
 
     # Step 2: Train
-    cp_dir = os.path.join(out_dir, "checkpoints")
-    csv_dir = os.path.join(out_dir, "csv")
-    trained_models = step2_train(args.timesteps, cp_dir, csv_dir, args.seed, log)
+    if args.dry_run:
+        sarl_ts = 100
+    else:
+        sarl_ts = args.timesteps
+
+    cp_dir = step2_train(
+        out_dir, sarl_ts, log,
+        force_retrain=args.force_retrain,
+        use_checkpoints_only=args.skip_training,
+        lr=args.lr,
+        batch_size=args.batch_size
+    )
 
     # Step 3: Evaluate
-    eval_df = step3_evaluate(trained_models, pps_list, args.seed, log)
-    
-    if args.algo != "all":
-        eval_csv_path = os.path.join(out_dir, "csv", f"sarl_evaluation_results_{args.algo}.csv")
-    else:
-        eval_csv_path = os.path.join(out_dir, "csv", "sarl_evaluation_results.csv")
-    eval_df.to_csv(eval_csv_path, index=False)
-
-    if args.wandb:
-        import wandb
-        # Log evaluation metrics back to wandb
-        for _, row in eval_df.iterrows():
-            wandb.log({
-                "eval/Offered_Load_pps": row["Offered_Load_pps"],
-                "eval/Throughput_Mbps": row["Throughput_Mbps"],
-                "eval/Delay_ms": row["Delay_ms"],
-                "eval/Drops": row["Drops"],
-                "eval/Collisions": row["Collisions"],
-                "eval/Avg_Reward": row["Avg_Reward"],
-                "model": row["Model"]
-            })
+    eval_df = step3_evaluate(
+        pps_list, cp_dir, out_dir, args.seed, log,
+        deterministic_eval=(not args.stochastic_eval),
+    )
 
     # Step 4: Plots
     if not args.skip_plots and not baseline_df.empty and not eval_df.empty:
@@ -577,13 +706,13 @@ def main():
     # Save experiment metadata
     metadata = {
         "timestamp": datetime.datetime.now().isoformat(),
-        "timesteps": args.timesteps,
+        "sarl_timesteps": sarl_ts,
         "seed": args.seed,
         "n_nodes": params.N,
         "phy_rate_bps": params.PHY_RATE_BPS,
         "fading_model": params.FADING_MODEL,
         "mobility_model": params.MOBILITY_MODEL,
-        "models_trained": list(trained_models.keys()),
+        "models_evaluated": list(eval_df['Model'].unique()) if not eval_df.empty else [],
         "load_points": len(pps_list),
     }
     with open(os.path.join(out_dir, "experiment_metadata.json"), "w") as f:
@@ -594,10 +723,6 @@ def main():
     log(f" Results: {out_dir}")
     log("=" * 60)
     log_file.close()
-
-    if args.wandb:
-        import wandb
-        wandb.finish()
 
 
 if __name__ == "__main__":

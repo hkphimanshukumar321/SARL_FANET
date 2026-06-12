@@ -1,0 +1,11 @@
+============================================================
+ Timestamp: 2026-06-13T01:54:42.107175
+ Output: C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\sarl_comparison_20260613_015442
+ SARL Timesteps: 10
+ Seed: 42
+ N=50, PHY=5Mbps, Fading=nakagami
+============================================================
+
+============================================================
+ STEP 1: Baseline MAC Simulations (MARL Env)
+============================================================

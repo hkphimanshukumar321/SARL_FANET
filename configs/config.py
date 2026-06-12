@@ -167,6 +167,10 @@ RUN_DQN = True
 RUN_PPO = True
 RUN_A2C = True
 
+# ==========================================
+# (MARL algorithms removed to preserve SARL independence)
+# ==========================================
+
 # Decentralized communication (needed by MARL env substrate)
 DECENTRALIZED_COMM = True
 

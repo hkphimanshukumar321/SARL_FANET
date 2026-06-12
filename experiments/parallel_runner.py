@@ -49,20 +49,33 @@ def run_experiment(algo, wandb_flag, seed, timesteps):
 
 def optuna_objective(trial):
     """
-    Optuna Skeleton implementation.
-    If you wish to do hyperparameter tuning later, modify this block.
+    Optuna implementation: tunes MCA-PPO learning rate and batch size.
     """
-    # Example hyperparameters:
-    # lr = trial.suggest_float('lr', 1e-4, 1e-2, log=True)
-    # batch_size = trial.suggest_categorical('batch_size', [32, 64, 128])
+    lr = trial.suggest_float('lr', 1e-5, 1e-2, log=True)
+    batch_size = trial.suggest_categorical('batch_size', [32, 64, 128, 256])
     
-    # You would then pass these to your subprocess as command line arguments
-    # and read them in run_sarl_comparison.py
-    # cmd = [..., "--lr", str(lr), "--batch-size", str(batch_size)]
-    # process = subprocess.Popen(cmd)
-    # process.wait()
-    # return the metric you want to maximize (e.g. throughput or avg_reward)
-    return 0.0
+    cmd = [
+        sys.executable,
+        os.path.join(os.path.dirname(__file__), "run_sarl_comparison.py"),
+        "--algo", "mca_ppo",
+        "--seed", "42",
+        "--out-dir", SHARED_OUT_DIR,
+        "--skip-baselines",
+        "--skip-plots",
+        "--lr", str(lr),
+        "--batch-size", str(batch_size),
+        "--timesteps", "2000" # Fast tune
+    ]
+    process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+    process.wait()
+    
+    import pandas as pd
+    try:
+        csv_path = os.path.join(SHARED_OUT_DIR, "csv", "mca_ppo_training_rewards.csv")
+        df = pd.read_csv(csv_path)
+        return df['reward'].tail(max(1, len(df)//10)).mean()
+    except Exception:
+        return -1000.0
 
 def main():
     parser = argparse.ArgumentParser(description="Parallel SARL Runner with OOM Guardrails")
@@ -75,12 +88,16 @@ def main():
     args = parser.parse_args()
 
     if args.use_optuna:
-        print("[Optuna Mode] Please define your search space in optuna_objective().")
+        print("[Optuna Mode] Running Optuna sweep for MCA-PPO...")
         try:
             import optuna
+            import json
             study = optuna.create_study(direction="maximize")
-            study.optimize(optuna_objective, n_trials=10)
+            study.optimize(optuna_objective, n_trials=5)
             print("Best params:", study.best_params)
+            with open("best_weights_and_params.json", "w") as f:
+                json.dump(study.best_params, f, indent=4)
+            print("Wrote best_weights_and_params.json")
         except ImportError:
             print("Optuna not installed. Run: pip install optuna")
         return

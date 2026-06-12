@@ -11,8 +11,14 @@ echo Checking dependencies...
 python -m pip install -q psutil tqdm optuna wandb
 if %ERRORLEVEL% neq 0 (
     echo Failed to install dependencies. Please check your python/pip setup.
-    exit /b %ERRORLEVEL%
+    exit /b 1
 )
+
+:: --- CRITICAL CPU OPTIMIZATION ---
+:: Prevent PyTorch from spawning overlapping threads per process
+set OMP_NUM_THREADS=4
+set MKL_NUM_THREADS=4
+set OPENBLAS_NUM_THREADS=4
 
 REM Login to Wandb with the provided API key
 echo Logging into wandb...

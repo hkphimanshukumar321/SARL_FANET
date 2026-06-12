@@ -1,0 +1,34 @@
+Starting Experiment targeting logic from config.py
+Directory: C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\N50_PHY5M_Q100_RTSCTS_ACK_enabled\trial_20260613_015543
+Parameters: N=50, PHY=5.0Mbps, Pkt=1000B, QMAX=100
+RTS/CTS Enabled: True, ACK Enabled: True
+Testing load 50 pps (1/20)
+Testing load 100 pps (2/20)
+Testing load 150 pps (3/20)
+Testing load 200 pps (4/20)
+Testing load 250 pps (5/20)
+Testing load 300 pps (6/20)
+Testing load 350 pps (7/20)
+Testing load 400 pps (8/20)
+Testing load 450 pps (9/20)
+Testing load 500 pps (10/20)
+Testing load 550 pps (11/20)
+Testing load 600 pps (12/20)
+Testing load 650 pps (13/20)
+Testing load 700 pps (14/20)
+Testing load 750 pps (15/20)
+Testing load 800 pps (16/20)
+Testing load 850 pps (17/20)
+Testing load 900 pps (18/20)
+Testing load 950 pps (19/20)
+Testing load 1000 pps (20/20)
+Saved metrics to C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\N50_PHY5M_Q100_RTSCTS_ACK_enabled\trial_20260613_015543\csv\summary_metrics.csv
+Saved delay data to csv/end_to_end_delay_vs_traffic_rate.csv
+Saved detailed buffer time-series to csv/buffer_usage_PROTOCOL.csv
+Saved ACK tracking data to csv/ack_success_log.csv
+Running 3D Mobility Simulation...
+Saved mobility CSVs to csv/mobility_positions.csv and csv/uav_sink_distance.csv
+Saved mobility plots to images/
+Running RL Post-Processing step...
+Saved Q-learning selection data to C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\N50_PHY5M_Q100_RTSCTS_ACK_enabled\trial_20260613_015543\csv\qlearning_mac_selection.csv
+Experiment completed successfully. Outputs saved to C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\N50_PHY5M_Q100_RTSCTS_ACK_enabled\trial_20260613_015543

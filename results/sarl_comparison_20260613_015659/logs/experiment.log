@@ -1,0 +1,17 @@
+============================================================
+ Timestamp: 2026-06-13T01:56:59.259254
+ Output: C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\sarl_comparison_20260613_015659
+ SARL Timesteps: 5000
+ Seed: 42
+ N=50, PHY=5Mbps, Fading=nakagami
+============================================================
+
+============================================================
+ STEP 1: Baseline MAC Simulations (MARL Env)
+============================================================
+
+============================================================
+ STEP 2: Training SARL agents on MARL env
+============================================================
+  Launching 6 training jobs on 6 workers
+  SARL: ['tabular', 'dqn', 'ppo', 'a2c', 'mca_d3qn', 'mca_ppo'] (5000 timesteps each)

@@ -2,7 +2,7 @@ from gymnasium import spaces
 from stable_baselines3 import A2C, DQN, PPO
 from utils.device_manager import resolve_device
 
-def create_sb3_baseline(env, algo_name="dqn", seed=42):
+def create_sb3_baseline(env, algo_name="dqn", seed=42, **kwargs):
     """
     Creates generic Stable-Baselines3 models for baseline comparison.
     These models will only use the scalar branch of the observation space
@@ -13,16 +13,20 @@ def create_sb3_baseline(env, algo_name="dqn", seed=42):
     # Resolve device from config (respects FORCE_CPU, ENABLE_GPU, TRAIN_ON_GPU)
     device = resolve_device("train")
     
+    # Extract common tuning kwargs
+    lr = kwargs.get('learning_rate')
+    batch_size = kwargs.get('batch_size')
+    
     if algo_name.lower() == "dqn":
         if isinstance(getattr(env, "action_space", None), spaces.MultiDiscrete):
             raise ValueError("SB3 DQN does not support MultiDiscrete joint actions in SARLCentralEnv.")
         model = DQN(
             "MultiInputPolicy",
             env,
-            learning_rate=1e-3,
+            learning_rate=lr if lr is not None else 1e-3,
             buffer_size=100000,
             learning_starts=100,
-            batch_size=64,
+            batch_size=batch_size if batch_size is not None else 64,
             gamma=0.99,
             target_update_interval=1000,
             exploration_initial_eps=1.0,
@@ -30,31 +34,34 @@ def create_sb3_baseline(env, algo_name="dqn", seed=42):
             exploration_fraction=0.1,
             device=device,
             seed=seed,
-            verbose=0
+            verbose=0,
+            tensorboard_log="./results/tensorboard_logs/"
         )
     elif algo_name.lower() == "ppo":
         model = PPO(
             "MultiInputPolicy",
             env,
-            learning_rate=3e-4,
+            learning_rate=lr if lr is not None else 3e-4,
             n_steps=128,
-            batch_size=64,
+            batch_size=batch_size if batch_size is not None else 64,
             n_epochs=10,
             gamma=0.99,
             device=device,
             seed=seed,
-            verbose=0
+            verbose=0,
+            tensorboard_log="./results/tensorboard_logs/"
         )
     elif algo_name.lower() == "a2c":
         model = A2C(
             "MultiInputPolicy",
             env,
-            learning_rate=7e-4,
+            learning_rate=lr if lr is not None else 7e-4,
             n_steps=5,
             gamma=0.99,
             device=device,
             seed=seed,
-            verbose=0
+            verbose=0,
+            tensorboard_log="./results/tensorboard_logs/"
         )
     else:
         raise ValueError(f"Unknown SB3 baseline algorithm: {algo_name}")

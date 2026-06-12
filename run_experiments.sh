@@ -14,6 +14,12 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# --- CRITICAL CPU OPTIMIZATION ---
+# Prevent PyTorch from spawning 96+ overlapping threads per process
+export OMP_NUM_THREADS=4
+export MKL_NUM_THREADS=4
+export OPENBLAS_NUM_THREADS=4
+
 # Login to Wandb with the provided API key
 echo "Logging into wandb..."
 python3 -m wandb login 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
