@@ -43,6 +43,19 @@ def run_experiment(algo, wandb_flag, seed, timesteps):
     if wandb_flag:
         cmd.append("--wandb")
         
+    if algo.lower() == "mca-ppo" and os.path.exists("best_weights_and_params.json"):
+        import json
+        try:
+            with open("best_weights_and_params.json", "r") as f:
+                params = json.load(f)
+            if "lr" in params:
+                cmd.extend(["--lr", str(params["lr"])])
+            if "batch_size" in params:
+                cmd.extend(["--batch-size", str(params["batch_size"])])
+            print(f"  [Optuna] Injected tuned hyperparameters for MCA-PPO: {params}")
+        except Exception as e:
+            print(f"  [Optuna] Failed to load tuned params: {e}")
+        
     # Do not redirect stdout/stderr so that tqdm progress shows up in the main console
     process = subprocess.Popen(cmd)
     return algo, process
