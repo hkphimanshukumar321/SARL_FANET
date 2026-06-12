@@ -161,8 +161,7 @@ def _train_sarl_worker(kwargs):
     if 'lr' in kwargs and kwargs['lr'] is not None:
         tuning_kwargs['learning_rate'] = kwargs['lr']
     if 'batch_size' in kwargs and kwargs['batch_size'] is not None:
-        tuning_kwargs['batch_size'] = kwargs['batch_size']
-
+    
     from envs.marl_sarl_wrapper import MARLtoSARLWrapper
     from utils.device_manager import resolve_device
 
@@ -170,11 +169,21 @@ def _train_sarl_worker(kwargs):
     train_device = resolve_device("train")
     print(f"  [Worker {pid}] SARL training: {algo.upper()} on device: {train_device}")
 
+    out_dir = kwargs.get("out_dir")
+    force_retrain = kwargs.get("force_retrain", False)
+    tuning_kwargs = kwargs.get("tuning_kwargs", {})
+    optuna_trial = kwargs.get("optuna_trial", -1)
+
+    cp_dir = os.path.join(out_dir, "checkpoints")
+    csv_dir = os.path.join(out_dir, "csv")
+
+    trial_suffix = f"_trial_{optuna_trial}" if optuna_trial >= 0 else ""
+
     if algo == 'tabular':
         from algorithms.rl.tabular_qlearning import TabularQLearning
-        save_path = os.path.join(cp_dir, "unified_tabular_model.json")
-        if (not force_retrain) and os.path.exists(save_path):
-            return f"{algo.upper()} skipped (checkpoint)"
+        save_path = os.path.join(cp_dir, f"unified_tabular_model{trial_suffix}")
+        if (not force_retrain) and os.path.exists(save_path + ".pkl"):
+            return f"TABULAR skipped (checkpoint)"
 
         env = MARLtoSARLWrapper(seed=seed)
         model = TabularQLearning(seed=seed)
@@ -200,8 +209,8 @@ def _train_sarl_worker(kwargs):
         model.save(save_path)
         if steps_log:
             df = pd.DataFrame({"step": steps_log, "reward": rewards_log})
-            df.to_csv(os.path.join(csv_dir, "tabular_training_rewards.csv"), index=False)
-            df.to_csv(os.path.join(cp_dir, "tabular_training_rewards.csv"), index=False)
+            df.to_csv(os.path.join(csv_dir, f"tabular_training_rewards{trial_suffix}.csv"), index=False)
+            df.to_csv(os.path.join(cp_dir, f"tabular_training_rewards{trial_suffix}.csv"), index=False)
         return f"{algo.upper()} trained."
 
     elif algo in ['dqn', 'ppo', 'a2c']:
@@ -210,7 +219,7 @@ def _train_sarl_worker(kwargs):
         from stable_baselines3.common.vec_env import DummyVecEnv
         from stable_baselines3.common.callbacks import BaseCallback
 
-        save_path = os.path.join(cp_dir, f"unified_{algo}_model")
+        save_path = os.path.join(cp_dir, f"unified_{algo}_model{trial_suffix}")
         if (not force_retrain) and os.path.exists(save_path + ".zip"):
             return f"{algo.upper()} skipped (checkpoint)"
 
@@ -238,8 +247,8 @@ def _train_sarl_worker(kwargs):
         model.save(save_path)
         if cb.steps:
             df = pd.DataFrame({"step": cb.steps, "reward": cb.rewards})
-            df.to_csv(os.path.join(csv_dir, f"{algo}_training_rewards.csv"), index=False)
-            df.to_csv(os.path.join(cp_dir, f"{algo}_training_rewards.csv"), index=False)
+            df.to_csv(os.path.join(csv_dir, f"{algo}_training_rewards{trial_suffix}.csv"), index=False)
+            df.to_csv(os.path.join(cp_dir, f"{algo}_training_rewards{trial_suffix}.csv"), index=False)
         return f"{algo.upper()} trained."
 
     elif algo == 'mca_d3qn':
@@ -248,7 +257,7 @@ def _train_sarl_worker(kwargs):
         from stable_baselines3.common.vec_env import DummyVecEnv
         from stable_baselines3.common.callbacks import BaseCallback
 
-        save_path = os.path.join(cp_dir, "unified_mca_d3qn_model")
+        save_path = os.path.join(cp_dir, f"unified_mca_d3qn_model{trial_suffix}")
         if (not force_retrain) and os.path.exists(save_path + ".zip"):
             return f"MCA-D3QN skipped (checkpoint)"
 
@@ -276,8 +285,8 @@ def _train_sarl_worker(kwargs):
         model.save(save_path)
         if cb.steps:
             df = pd.DataFrame({"step": cb.steps, "reward": cb.rewards})
-            df.to_csv(os.path.join(csv_dir, "mca_d3qn_training_rewards.csv"), index=False)
-            df.to_csv(os.path.join(cp_dir, "mca_d3qn_training_rewards.csv"), index=False)
+            df.to_csv(os.path.join(csv_dir, f"mca_d3qn_training_rewards{trial_suffix}.csv"), index=False)
+            df.to_csv(os.path.join(cp_dir, f"mca_d3qn_training_rewards{trial_suffix}.csv"), index=False)
         return f"MCA-D3QN trained."
 
     elif algo == 'mca_ppo':
@@ -286,7 +295,7 @@ def _train_sarl_worker(kwargs):
         from stable_baselines3.common.vec_env import DummyVecEnv
         from stable_baselines3.common.callbacks import BaseCallback
 
-        save_path = os.path.join(cp_dir, "unified_mca_ppo_model")
+        save_path = os.path.join(cp_dir, f"unified_mca_ppo_model{trial_suffix}")
         if (not force_retrain) and os.path.exists(save_path + ".zip"):
             return f"MCA-PPO skipped (checkpoint)"
 
@@ -314,8 +323,8 @@ def _train_sarl_worker(kwargs):
         model.save(save_path)
         if cb.steps:
             df = pd.DataFrame({"step": cb.steps, "reward": cb.rewards})
-            df.to_csv(os.path.join(csv_dir, "mca_ppo_training_rewards.csv"), index=False)
-            df.to_csv(os.path.join(cp_dir, "mca_ppo_training_rewards.csv"), index=False)
+            df.to_csv(os.path.join(csv_dir, f"mca_ppo_training_rewards{trial_suffix}.csv"), index=False)
+            df.to_csv(os.path.join(cp_dir, f"mca_ppo_training_rewards{trial_suffix}.csv"), index=False)
         return f"MCA-PPO trained."
 
     return f"Unknown SARL algo: {algo}"
@@ -333,10 +342,6 @@ def step2_train(out_dir, sarl_timesteps, log,
     log(" STEP 2: Training SARL agents on MARL env")
     log("=" * 60)
 
-    cp_dir = os.path.join(out_dir, "checkpoints")
-    os.makedirs(cp_dir, exist_ok=True)
-    csv_dir = os.path.join(out_dir, "csv")
-
     # Build task lists
     sarl_tasks = []
     if getattr(params, "RUN_TABULAR_QLEARNING", True): sarl_tasks.append('tabular')
@@ -351,7 +356,7 @@ def step2_train(out_dir, sarl_timesteps, log,
     for algo in sarl_tasks:
         kw = {
             'algo': algo, 'timesteps': sarl_timesteps,
-            'cp_dir': cp_dir, 'csv_dir': csv_dir, 'seed': params.SEED,
+            'out_dir': out_dir, 'seed': params.SEED,
             'force_retrain': force_retrain,
         }
         kw.update(kwargs) # inject tuning args
@@ -363,14 +368,14 @@ def step2_train(out_dir, sarl_timesteps, log,
 
     if use_checkpoints_only and not force_retrain:
         log("  Checkpoint policy: USE_CHECKPOINTS_ONLY (training skipped)")
-        return cp_dir
+        return os.path.join(out_dir, "checkpoints")
 
     with multiprocessing.Pool(processes=n_workers) as pool:
         for result in pool.imap_unordered(_dispatch_training, all_kwargs):
             log(f"    --> {result}")
 
     log("  All training complete.")
-    return cp_dir
+    return os.path.join(out_dir, "checkpoints")
 
 
 # =====================================================================
@@ -407,7 +412,7 @@ def step3_evaluate(pps_list, cp_dir, out_dir, seed, log, deterministic_eval=True
         _try_load_sb3("A2C", A2C, "unified_a2c_model")
 
     if getattr(params, "RUN_TABULAR_QLEARNING", True):
-        tab_path = os.path.join(cp_dir, "unified_tabular_model.json")
+        tab_path = os.path.join(cp_dir, "unified_tabular_model.pkl")
         if os.path.exists(tab_path):
             from algorithms.rl.tabular_qlearning import TabularQLearning
             tab = TabularQLearning()
@@ -627,6 +632,7 @@ def main():
     parser.add_argument("--profile", action="store_true", help="Run with cProfile")
     parser.add_argument("--lr", type=float, default=None, help="Learning rate (tuning)")
     parser.add_argument("--batch-size", type=int, default=None, help="Batch size (tuning)")
+    parser.add_argument("--optuna-trial", type=int, default=-1, help="Trial ID when run by optuna")
     args = parser.parse_args()
 
     if args.profile:
@@ -700,12 +706,16 @@ def main_execution(args):
     else:
         sarl_ts = args.timesteps
 
+    tuning_kwargs = {}
+    if args.lr: tuning_kwargs['lr'] = args.lr
+    if args.batch_size: tuning_kwargs['batch_size'] = args.batch_size
+
     cp_dir = step2_train(
         out_dir, sarl_ts, log,
         force_retrain=args.force_retrain,
         use_checkpoints_only=args.skip_training,
-        lr=args.lr,
-        batch_size=args.batch_size
+        tuning_kwargs=tuning_kwargs,
+        optuna_trial=getattr(args, "optuna_trial", -1),
     )
 
     # Step 3: Evaluate

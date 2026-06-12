@@ -78,6 +78,7 @@ def optuna_objective(trial, algo):
         "--skip-plots",
         "--skip-eval",
         "--force-retrain",
+        "--optuna-trial", str(trial.number),
         "--lr", str(lr),
         "--batch-size", str(batch_size),
         "--timesteps", "10000" # Full tune length
@@ -87,7 +88,7 @@ def optuna_objective(trial, algo):
     
     import pandas as pd
     try:
-        csv_path = os.path.join(SHARED_OUT_DIR, "csv", f"{algo}_training_rewards.csv")
+        csv_path = os.path.join(SHARED_OUT_DIR, "csv", f"{algo}_training_rewards_trial_{trial.number}.csv")
         df = pd.read_csv(csv_path)
         return df['reward'].tail(max(1, len(df)//10)).mean()
     except Exception:
