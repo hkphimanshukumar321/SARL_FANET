@@ -618,6 +618,7 @@ def main():
     parser.add_argument("--skip-training", action="store_true", help="Skip training (use existing checkpoints)")
     parser.add_argument("--skip-baselines", action="store_true", help="Skip baseline MAC simulation")
     parser.add_argument("--skip-plots", action="store_true", help="Skip generating plots")
+    parser.add_argument("--skip-eval", action="store_true", help="Skip evaluation phase")
     parser.add_argument("--out-dir", type=str, default=None, help="Output directory (creates new if None)")
     parser.add_argument("--stochastic-eval", action="store_true", help="Use stochastic evaluation")
     parser.add_argument("--wandb", action="store_true", help="Use WandB")
@@ -708,10 +709,13 @@ def main_execution(args):
     )
 
     # Step 3: Evaluate
-    eval_df = step3_evaluate(
-        pps_list, cp_dir, out_dir, args.seed, log,
-        deterministic_eval=(not args.stochastic_eval),
-    )
+    if not args.skip_eval:
+        eval_df = step3_evaluate(
+            pps_list, cp_dir, out_dir, args.seed, log,
+            deterministic_eval=(not args.stochastic_eval),
+        )
+    else:
+        eval_df = pd.DataFrame()
 
     # Step 4: Plots
     if not args.skip_plots and not baseline_df.empty and not eval_df.empty:
