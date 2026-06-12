@@ -77,6 +77,7 @@ def optuna_objective(trial, algo):
         "--skip-baselines",
         "--skip-plots",
         "--skip-eval",
+        "--force-retrain",
         "--lr", str(lr),
         "--batch-size", str(batch_size),
         "--timesteps", "10000" # Full tune length
