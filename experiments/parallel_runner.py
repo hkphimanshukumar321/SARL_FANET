@@ -81,7 +81,7 @@ def optuna_objective(trial, algo):
         "--batch-size", str(batch_size),
         "--timesteps", "10000" # Full tune length
     ]
-    process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    process = subprocess.Popen(cmd)
     process.wait()
     
     import pandas as pd
