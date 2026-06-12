@@ -84,6 +84,8 @@ def aggregate_cluster_infos(raw_infos):
         "delay_ms": float(np.mean([i.get("delay_ms", 0.0) for i in alive_infos])),
         "drops": float(sum(i.get("drops", 0.0) for i in alive_infos)),
         "collisions": float(sum(i.get("collisions", 0.0) for i in alive_infos)),
+        "jains_fairness": float(alive_infos[0].get("jains_fairness", 1.0)),
+        "leader_health": float(np.mean([i.get("leader_health", 1.0) for i in alive_infos])),
     }
 
 
@@ -114,6 +116,7 @@ def step1_baselines(pps_list, seed, log):
 
             ep_thr, ep_del = [], []
             ep_drops, ep_col = 0, 0
+            ep_fairness, ep_health = [], []
 
             while env.agents:
                 actions = {a: fixed_action for a in env.possible_agents}
@@ -123,12 +126,16 @@ def step1_baselines(pps_list, seed, log):
                 ep_del.append(agg["delay_ms"])
                 ep_drops += agg["drops"]
                 ep_col += agg["collisions"]
+                ep_fairness.append(agg["jains_fairness"])
+                ep_health.append(agg["leader_health"])
 
             n_steps = max(len(ep_thr), 1)
             row[f"{proto_name}_Throughput_Mbps"] = round(sum(ep_thr) / n_steps, 6)
             row[f"{proto_name}_Delay_s"] = round(sum(ep_del) / n_steps / 1000.0, 8)
             row[f"{proto_name}_Drops"] = ep_drops
             row[f"{proto_name}_Collisions"] = ep_col
+            row[f"{proto_name}_Fairness"] = round(sum(ep_fairness) / n_steps, 4)
+            row[f"{proto_name}_Health"] = round(sum(ep_health) / n_steps, 4)
 
         results.append(row)
     return pd.DataFrame(results)
@@ -425,6 +432,7 @@ def step3_evaluate(pps_list, cp_dir, out_dir, seed, log, deterministic_eval=True
 
         for model_name, model in models.items():
             total_thr, total_delay, total_drops, total_collisions, steps = 0, 0, 0, 0, 0
+            total_fairness, total_health = 0.0, 0.0
             mac_choices = []
             avg_thr, avg_delay, dom_mac = 0.0, 0.0, "CSMA"
             total_inf_time = 0.0
@@ -446,15 +454,19 @@ def step3_evaluate(pps_list, cp_dir, out_dir, seed, log, deterministic_eval=True
 
                 raw = info.get("raw_infos", {})
                 if raw:
-                    any_i = next(iter(raw.values()), {})
-                    total_thr += any_i.get("throughput", 0)
-                    total_delay += any_i.get("delay_ms", 0)
-                    total_drops += any_i.get("drops", 0)
-                    total_collisions += any_i.get("collisions", 0)
+                    agg = aggregate_cluster_infos(raw)
+                    total_thr += agg["throughput_mbps"]
+                    total_delay += agg["delay_ms"]
+                    total_drops += agg["drops"]
+                    total_collisions += agg["collisions"]
+                    total_fairness += agg["jains_fairness"]
+                    total_health += agg["leader_health"]
                 steps += 1
 
             avg_thr = total_thr / max(steps, 1)
             avg_delay = total_delay / max(steps, 1)
+            avg_fairness = total_fairness / max(steps, 1)
+            avg_health = total_health / max(steps, 1)
             dom_mac = "TDMA" if mac_choices.count(0) > mac_choices.count(1) else "CSMA"
 
             tdma_count = int(mac_choices.count(0))
@@ -469,6 +481,8 @@ def step3_evaluate(pps_list, cp_dir, out_dir, seed, log, deterministic_eval=True
                 'Delay_ms': round(avg_delay, 4),
                 'Drops': total_drops,
                 'Collisions': total_collisions,
+                'Fairness': round(avg_fairness, 4),
+                'Health': round(avg_health, 4),
                 'Dominant_MAC': dom_mac,
                 'TDMA_Share': round(tdma_count / total_count, 4),
                 'CSMA_Share': round(csma_count / total_count, 4),

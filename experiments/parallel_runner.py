@@ -40,19 +40,20 @@ def run_experiment(algo, wandb_flag, seed, timesteps):
     ]
     if timesteps is not None:
         cmd.extend(["--timesteps", str(timesteps)])
-    if wandb_flag:
-        cmd.append("--wandb")
-        
-    if algo.lower() == "mca-ppo" and os.path.exists("best_weights_and_params.json"):
+    if os.path.exists("best_weights_and_params.json"):
         import json
         try:
             with open("best_weights_and_params.json", "r") as f:
-                params = json.load(f)
-            if "lr" in params:
-                cmd.extend(["--lr", str(params["lr"])])
-            if "batch_size" in params:
-                cmd.extend(["--batch-size", str(params["batch_size"])])
-            print(f"  [Optuna] Injected tuned hyperparameters for MCA-PPO: {params}")
+                all_params = json.load(f)
+            # Find the params for this specific algorithm
+            algo_key = algo.lower().replace("-", "_")
+            if algo_key in all_params:
+                params = all_params[algo_key]
+                if "lr" in params:
+                    cmd.extend(["--lr", str(params["lr"])])
+                if "batch_size" in params:
+                    cmd.extend(["--batch-size", str(params["batch_size"])])
+                print(f"  [Optuna] Injected tuned hyperparameters for {algo}: {params}")
         except Exception as e:
             print(f"  [Optuna] Failed to load tuned params: {e}")
         
@@ -60,9 +61,9 @@ def run_experiment(algo, wandb_flag, seed, timesteps):
     process = subprocess.Popen(cmd)
     return algo, process
 
-def optuna_objective(trial):
+def optuna_objective(trial, algo):
     """
-    Optuna implementation: tunes MCA-PPO learning rate and batch size.
+    Optuna implementation: tunes learning rate and batch size for the given algorithm.
     """
     lr = trial.suggest_float('lr', 1e-5, 1e-2, log=True)
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128, 256])
@@ -70,21 +71,22 @@ def optuna_objective(trial):
     cmd = [
         sys.executable,
         os.path.join(os.path.dirname(__file__), "run_sarl_comparison.py"),
-        "--algo", "mca_ppo",
+        "--algo", algo,
         "--seed", "42",
         "--out-dir", SHARED_OUT_DIR,
         "--skip-baselines",
         "--skip-plots",
+        "--skip-eval",
         "--lr", str(lr),
         "--batch-size", str(batch_size),
-        "--timesteps", "2000" # Fast tune
+        "--timesteps", "10000" # Full tune length
     ]
-    process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL)
+    process = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     process.wait()
     
     import pandas as pd
     try:
-        csv_path = os.path.join(SHARED_OUT_DIR, "csv", "mca_ppo_training_rewards.csv")
+        csv_path = os.path.join(SHARED_OUT_DIR, "csv", f"{algo}_training_rewards.csv")
         df = pd.read_csv(csv_path)
         return df['reward'].tail(max(1, len(df)//10)).mean()
     except Exception:
@@ -101,16 +103,26 @@ def main():
     args = parser.parse_args()
 
     if args.use_optuna:
-        print("[Optuna Mode] Running Optuna sweep for MCA-PPO...")
+        import optuna
+        import json
+        from functools import partial
+        
+        algos_to_tune = ["dqn", "ppo", "a2c", "mca_d3qn", "mca_ppo"]
+        print(f"[Optuna Mode] Running Optuna sweep for algorithms: {algos_to_tune}")
+        
+        master_params = {}
         try:
-            import optuna
-            import json
-            study = optuna.create_study(direction="maximize")
-            study.optimize(optuna_objective, n_trials=5)
-            print("Best params:", study.best_params)
+            for algo in algos_to_tune:
+                print(f"\n[Optuna] Starting tuning for {algo.upper()} (16 trials x 10,000 steps)...")
+                study = optuna.create_study(direction="maximize")
+                objective_with_algo = partial(optuna_objective, algo=algo)
+                study.optimize(objective_with_algo, n_trials=16)
+                print(f"[{algo.upper()}] Best params: {study.best_params}")
+                master_params[algo] = study.best_params
+                
             with open("best_weights_and_params.json", "w") as f:
-                json.dump(study.best_params, f, indent=4)
-            print("Wrote best_weights_and_params.json")
+                json.dump(master_params, f, indent=4)
+            print("\n[Optuna] Tuning Complete! Wrote all best parameters to best_weights_and_params.json")
         except ImportError:
             print("Optuna not installed. Run: pip install optuna")
         return

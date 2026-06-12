@@ -890,6 +890,17 @@ class MARLMacEnv(ParallelEnv):
             info["global_coord_success"] = global_coord_success
             info["current_offered_pps"] = float(self.current_offered_pps)
 
+        # Compute Jain's Fairness Index
+        th_values = np.array(list(throughput_per_cluster.values()), dtype=np.float64)
+        sum_th = np.sum(th_values)
+        if sum_th > 1e-9 and len(th_values) > 0:
+            jains_fairness = (sum_th ** 2) / (len(th_values) * np.sum(th_values ** 2))
+        else:
+            jains_fairness = 1.0
+
+        for agent_name, info in infos.items():
+            info["jains_fairness"] = float(jains_fairness)
+
         diagnostics = self.cluster_manager.get_diagnostics()
         summary = {
             "step": int(self.current_step),

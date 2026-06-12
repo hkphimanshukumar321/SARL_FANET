@@ -27,3 +27,14 @@
   Loaded SARL: A2C
   Loaded SARL: Tabular
   Evaluating 6 models across 20 load points
+  Saved: results/sarl_comparison_20260613_021514\csv\unified_eval_sweep.csv
+
+============================================================
+ STEP 4: Generating Comparison Plots
+============================================================
+  Saved plots to results/sarl_comparison_20260613_021514\images
+
+============================================================
+ EXPERIMENT COMPLETE
+ Results: results/sarl_comparison_20260613_021514
+============================================================
