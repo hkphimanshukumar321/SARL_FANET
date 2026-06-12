@@ -151,11 +151,7 @@ def _train_sarl_worker(kwargs):
     """
     algo = kwargs['algo']
     timesteps = kwargs['timesteps']
-    cp_dir = kwargs['cp_dir']
-    csv_dir = kwargs['csv_dir']
-    seed = kwargs['seed']
-    force_retrain = kwargs['force_retrain']
-    
+    seed = kwargs.get('seed', 42)
     # Extract tuning kwargs cleanly
     tuning_kwargs = {}
     if 'lr' in kwargs and kwargs['lr'] is not None:
