@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-06-13T03:11:18.103446",
+  "sarl_timesteps": 100,
+  "seed": 42,
+  "n_nodes": 50,
+  "phy_rate_bps": 5000000.0,
+  "fading_model": "nakagami",
+  "mobility_model": "random_walk",
+  "models_evaluated": [],
+  "load_points": 20
+}

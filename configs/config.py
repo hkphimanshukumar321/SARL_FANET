@@ -107,7 +107,7 @@ SINK_Y = 200
 SINK_Z = 25
 
 # Mobility model: "gauss_markov" | "random_waypoint" | "random_walk" | "circular"
-MOBILITY_MODEL = "random_walk"
+MOBILITY_MODEL = "circular"
 
 # Gauss-Markov specific
 GM_ALPHA = 0.5

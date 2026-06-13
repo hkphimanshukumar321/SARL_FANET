@@ -53,6 +53,35 @@ def run_experiment(algo, wandb_flag, seed, timesteps):
                     cmd.extend(["--lr", str(params["lr"])])
                 if "batch_size" in params:
                     cmd.extend(["--batch-size", str(params["batch_size"])])
+                
+                # Retrieve and normalize weights from JSON
+                w_t = params.get("w_throughput")
+                w_d = params.get("w_delay")
+                w_f = params.get("w_failures")
+                w_j = params.get("w_jitter")
+                if w_t is not None and w_d is not None and w_f is not None and w_j is not None:
+                    total_w = w_t + w_d + w_f + w_j
+                    if total_w > 0:
+                        cmd.extend(["--w-throughput", str(w_t/total_w)])
+                        cmd.extend(["--w-delay", str(w_d/total_w)])
+                        cmd.extend(["--w-failures", str(w_f/total_w)])
+                        cmd.extend(["--w-jitter", str(w_j/total_w)])
+                # Retrieve and normalize clustering membership weights
+                cw_keys = ["c_w_dist", "c_w_sinr", "c_w_mob", "c_w_load"]
+                if all(k in params for k in cw_keys):
+                    total_cw = sum(params[k] for k in cw_keys)
+                    if total_cw > 0:
+                        for k in cw_keys:
+                            cmd.extend([f"--{k.replace('_', '-')}", str(params[k]/total_cw)])
+                            
+                # Retrieve and normalize clustering CH suitability weights
+                ca_keys = ["c_a_energy", "c_a_degree", "c_a_mobstab", "c_a_queue", "c_a_risk"]
+                if all(k in params for k in ca_keys):
+                    total_ca = sum(params[k] for k in ca_keys)
+                    if total_ca > 0:
+                        for k in ca_keys:
+                            cmd.extend([f"--{k.replace('_', '-')}", str(params[k]/total_ca)])
+
                 print(f"  [Optuna] Injected tuned hyperparameters for {algo}: {params}")
         except Exception as e:
             print(f"  [Optuna] Failed to load tuned params: {e}")
@@ -63,16 +92,55 @@ def run_experiment(algo, wandb_flag, seed, timesteps):
 
 def optuna_objective(trial, algo):
     """
-    Optuna implementation: tunes learning rate and batch size for the given algorithm.
+    Optuna implementation: tunes learning rate, batch size, and reward weights.
     """
     lr = trial.suggest_float('lr', 1e-5, 1e-2, log=True)
     batch_size = trial.suggest_categorical('batch_size', [32, 64, 128, 256])
     
+    w_throughput = trial.suggest_float('w_throughput', 0.0, 1.0)
+    w_delay = trial.suggest_float('w_delay', 0.0, 1.0)
+    w_failures = trial.suggest_float('w_failures', 0.0, 1.0)
+    w_jitter = trial.suggest_float('w_jitter', 0.0, 1.0)
+    
+    total_w = w_throughput + w_delay + w_failures + w_jitter
+    if total_w > 0:
+        w_t = w_throughput / total_w
+        w_d = w_delay / total_w
+        w_f = w_failures / total_w
+        w_j = w_jitter / total_w
+    else:
+        w_t, w_d, w_f, w_j = 0.25, 0.25, 0.25, 0.25
+        
+    # Tune Clustering Membership Weights
+    cw_dist = trial.suggest_float('c_w_dist', 0.0, 1.0)
+    cw_sinr = trial.suggest_float('c_w_sinr', 0.0, 1.0)
+    cw_mob = trial.suggest_float('c_w_mob', 0.0, 1.0)
+    cw_load = trial.suggest_float('c_w_load', 0.0, 1.0)
+    
+    total_cw = cw_dist + cw_sinr + cw_mob + cw_load
+    if total_cw > 0:
+        cw_dist, cw_sinr, cw_mob, cw_load = cw_dist/total_cw, cw_sinr/total_cw, cw_mob/total_cw, cw_load/total_cw
+    else:
+        cw_dist, cw_sinr, cw_mob, cw_load = 0.40, 0.25, 0.20, 0.15
+
+    # Tune Clustering CH Suitability Weights
+    ca_energy = trial.suggest_float('c_a_energy', 0.0, 1.0)
+    ca_degree = trial.suggest_float('c_a_degree', 0.0, 1.0)
+    ca_mobstab = trial.suggest_float('c_a_mobstab', 0.0, 1.0)
+    ca_queue = trial.suggest_float('c_a_queue', 0.0, 1.0)
+    ca_risk = trial.suggest_float('c_a_risk', 0.0, 1.0)
+    
+    total_ca = ca_energy + ca_degree + ca_mobstab + ca_queue + ca_risk
+    if total_ca > 0:
+        ca_energy, ca_degree, ca_mobstab, ca_queue, ca_risk = ca_energy/total_ca, ca_degree/total_ca, ca_mobstab/total_ca, ca_queue/total_ca, ca_risk/total_ca
+    else:
+        ca_energy, ca_degree, ca_mobstab, ca_queue, ca_risk = 0.30, 0.25, 0.20, 0.15, 0.10
+
     cmd = [
         sys.executable,
         os.path.join(os.path.dirname(__file__), "run_sarl_comparison.py"),
         "--algo", algo,
-        "--seed", "42",
+        "--seed", str(42 + trial.number),
         "--out-dir", SHARED_OUT_DIR,
         "--skip-baselines",
         "--skip-plots",
@@ -81,6 +149,19 @@ def optuna_objective(trial, algo):
         "--optuna-trial", str(trial.number),
         "--lr", str(lr),
         "--batch-size", str(batch_size),
+        "--w-throughput", str(w_t),
+        "--w-delay", str(w_d),
+        "--w-failures", str(w_f),
+        "--w-jitter", str(w_j),
+        "--c-w-dist", str(cw_dist),
+        "--c-w-sinr", str(cw_sinr),
+        "--c-w-mob", str(cw_mob),
+        "--c-w-load", str(cw_load),
+        "--c-a-energy", str(ca_energy),
+        "--c-a-degree", str(ca_degree),
+        "--c-a-mobstab", str(ca_mobstab),
+        "--c-a-queue", str(ca_queue),
+        "--c-a-risk", str(ca_risk),
         "--timesteps", "10000" # Full tune length
     ]
     process = subprocess.Popen(cmd)
@@ -115,10 +196,10 @@ def main():
         master_params = {}
         try:
             for algo in algos_to_tune:
-                print(f"\n[Optuna] Starting tuning for {algo.upper()} (16 trials x 10,000 steps)...")
+                print(f"\n[Optuna] Starting tuning for {algo.upper()} (64 trials x 10,000 steps)...")
                 study = optuna.create_study(direction="maximize")
                 objective_with_algo = partial(optuna_objective, algo=algo)
-                study.optimize(objective_with_algo, n_trials=16)
+                study.optimize(objective_with_algo, n_trials=64)
                 print(f"[{algo.upper()}] Best params: {study.best_params}")
                 master_params[algo] = study.best_params
                 

@@ -629,7 +629,45 @@ def main():
     parser.add_argument("--lr", type=float, default=None, help="Learning rate (tuning)")
     parser.add_argument("--batch-size", type=int, default=None, help="Batch size (tuning)")
     parser.add_argument("--optuna-trial", type=int, default=-1, help="Trial ID when run by optuna")
+    
+    # Reward Weights Args
+    parser.add_argument("--w-throughput", type=float, default=None, help="Throughput reward weight")
+    parser.add_argument("--w-delay", type=float, default=None, help="Delay reward weight")
+    parser.add_argument("--w-failures", type=float, default=None, help="Failures reward weight")
+    parser.add_argument("--w-jitter", type=float, default=None, help="Jitter reward weight")
+    
+    # Clustering Weights Args (Membership)
+    parser.add_argument("--c-w-dist", type=float, default=None, help="Proximity weight")
+    parser.add_argument("--c-w-sinr", type=float, default=None, help="Communication quality weight")
+    parser.add_argument("--c-w-mob", type=float, default=None, help="Mobility stability weight")
+    parser.add_argument("--c-w-load", type=float, default=None, help="Load balancing weight")
+    
+    # Clustering Weights Args (CH Suitability)
+    parser.add_argument("--c-a-energy", type=float, default=None, help="Residual-energy weight")
+    parser.add_argument("--c-a-degree", type=float, default=None, help="Connectivity degree weight")
+    parser.add_argument("--c-a-mobstab", type=float, default=None, help="Mobility-stability weight")
+    parser.add_argument("--c-a-queue", type=float, default=None, help="Queue penalty weight")
+    parser.add_argument("--c-a-risk", type=float, default=None, help="Low-energy risk weight")
+
     args = parser.parse_args()
+
+    # Apply reward weights globally if provided
+    if args.w_throughput is not None: RLConfig.REWARD_W_THROUGHPUT = args.w_throughput
+    if args.w_delay is not None: RLConfig.REWARD_W_DELAY = args.w_delay
+    if args.w_failures is not None: RLConfig.REWARD_W_FAILURES = args.w_failures
+    if args.w_jitter is not None: RLConfig.REWARD_W_JITTER = args.w_jitter
+    
+    # Apply clustering weights globally if provided
+    if args.c_w_dist is not None: CC.W_DIST = args.c_w_dist
+    if args.c_w_sinr is not None: CC.W_SINR = args.c_w_sinr
+    if args.c_w_mob is not None: CC.W_MOB = args.c_w_mob
+    if args.c_w_load is not None: CC.W_LOAD = args.c_w_load
+    
+    if args.c_a_energy is not None: CC.A_ENERGY = args.c_a_energy
+    if args.c_a_degree is not None: CC.A_DEGREE = args.c_a_degree
+    if args.c_a_mobstab is not None: CC.A_MOBSTAB = args.c_a_mobstab
+    if args.c_a_queue is not None: CC.A_QUEUE = args.c_a_queue
+    if args.c_a_risk is not None: CC.A_RISK = args.c_a_risk
 
     if args.profile:
         import cProfile

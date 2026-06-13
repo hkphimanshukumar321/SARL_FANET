@@ -1,0 +1,12 @@
+============================================================
+ Timestamp: 2026-06-13T03:07:52.333502
+ Output: C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\sarl_comparison_20260613_030752
+ SARL Timesteps: 10000
+ Seed: 42
+ N=50, PHY=5Mbps, Fading=nakagami
+============================================================
+
+  [DRY RUN] Verifying imports and environment setup...
+    MARLtoSARLWrapper: obs scalars shape = (14,)
+    Action space: Discrete(2)
+  [DRY RUN] All imports and environments OK.
