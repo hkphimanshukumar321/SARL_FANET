@@ -208,7 +208,7 @@ def main():
             print("\n[Optuna] Tuning Complete! Wrote all best parameters to best_weights_and_params.json")
         except ImportError:
             print("Optuna not installed. Run: pip install optuna")
-        return
+            return
 
     print(f"Shared Output Directory: {SHARED_OUT_DIR}")
     os.makedirs(SHARED_OUT_DIR, exist_ok=True)
