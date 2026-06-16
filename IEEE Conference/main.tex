@@ -1,0 +1,42 @@
+% main.tex — IEEE Conference Paper: RL for Clustered FANETs
+% Compile with: pdflatex main && bibtex main && pdflatex main && pdflatex main
+
+\documentclass[10pt, conference]{IEEEtran}
+
+% ── Packages ──────────────────────────────────────────────────
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{bm}
+\usepackage{multirow}
+\usepackage{xcolor}
+
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
+
+% ── Title ─────────────────────────────────────────────────────
+\title{RL-Based Adaptive MAC Control for Dynamic Decentralized FANETs over Multi-Fading Channels}
+
+
+% ── Document ──────────────────────────────────────────────────
+\begin{document}
+\maketitle
+
+\input{abstract}
+\input{introduction}
+\input{related_work}
+\input{environment}
+\input{algorithms}
+\input{experimental_setup}
+\input{results}
+\input{conclusion}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

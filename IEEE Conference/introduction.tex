@@ -1,0 +1,18 @@
+% introduction.tex
+
+\section{Introduction}
+\label{sec:introduction}
+
+Unmanned aerial vehicle (UAV) swarms operating as dynamic decentralized Flying Ad Hoc Networks (FANETs) face a unique Medium Access Control (MAC) layer challenge: the communication substrate is subject to three-dimensional mobility, time-varying Nakagami-$m$ faded air-to-air links, dynamic decentralized cluster formation and dissolution, and heterogeneous traffic loads that shift on the order of seconds~\cite{li2024uavmac}. Classical fixed-assignment protocols such as time-division multiple access (TDMA) underutilize bandwidth when clusters shrink, while contention-based carrier-sense multiple access with collision avoidance (CSMA/CA) degrades rapidly under high offered loads and hidden-terminal geometries. Neither family adapts to the joint mobility--channel--traffic state that characterizes real FANET deployments.
+
+Reinforcement learning (RL) offers a powerful data-driven alternative. Recent advances in deep learning for UAVs, ranging from RF spectrogram-based multi-class drone classification~\cite{cnn2026drone} to dynamic MAC control~\cite{zhao2025fanetrl}, demonstrate the efficacy of mapping complex environmental observations directly to optimal actions. An RL agent can observe local cluster state, channel quality indicators, queue occupancy, and recent time-burst history, and learn a policy that maps these observations to a joint MAC-mode and time-burst split action. 
+
+This paper proposes the Mobility-Channel-Aware Proximal Policy Optimization (MCA-PPO) algorithm to solve the MAC control problem in dynamic decentralized FANETs. Our core contributions are as follows:
+\begin{enumerate}
+    \item We develop a \textbf{dynamic decentralized clustering algorithm} for UAV mobility and MAC coordination, modeled natively as a custom multi-agent environment using the OpenAI Gym and PettingZoo frameworks.
+    \item We propose \textbf{MCA-PPO}, an advanced actor-critic RL controller utilizing a custom feature extractor that fuses a multi-layer perceptron (MLP) scalar branch with a long short-term memory (LSTM) temporal branch to capture instantaneous and historical mobility--channel dynamics.
+    \item We present a \textbf{unified benchmarking study} evaluating MCA-PPO against Tabular Q-Learning, DQN~\cite{mnih2015dqn}, standard PPO~\cite{schulman2017ppo}, A2C, and a similarly augmented value-based MCA-D3QN, under high-fidelity cross-layer multi-fading and dynamic decentralized topology conditions. Specifically, MCA-PPO offers a Pareto-balanced policy that reduces drops compared with DQN and improves throughput compared with standard PPO, while maintaining low delay and feasible edge inference latency.
+    \item An \textbf{automated fifteen-dimensional NSGA-II evolutionary search} (comprising 320 experiments, 64 trials per deep RL agent) over reward weights, clustering thresholds, and training hyperparameters, to discover the best weights and hyperparameters, ensuring rigorous algorithmic comparisons.
+\end{enumerate}
+
+The remainder of the paper is organized as follows. Section~\ref{sec:related} reviews related work. Section~\ref{sec:env} describes the dynamic decentralized FANET simulation environment. Section~\ref{sec:algorithms} presents the proposed RL algorithms. Section~\ref{sec:setup} outlines the experimental setup, detailing the hyperparameter tuning, training configurations, and hardware profiling methodology. Section~\ref{sec:results} reports the training convergence, main benchmark results, and hardware deployment metrics. Finally, Section~\ref{sec:conclusion} concludes.

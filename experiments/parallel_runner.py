@@ -36,7 +36,8 @@ def run_experiment(algo, wandb_flag, seed, timesteps):
         "--seed", str(seed),
         "--out-dir", SHARED_OUT_DIR,
         "--skip-baselines",
-        "--skip-plots"
+        "--skip-plots",
+        "--skip-eval"
     ]
     if timesteps is not None:
         cmd.extend(["--timesteps", str(timesteps)])
@@ -260,31 +261,17 @@ def main():
     finally:
         print(f"\nFinished. {completed}/{len(ALGORITHMS)} completed.")
         
-        print("\n--- Aggregating Results & Generating Plots ---")
-        import pandas as pd
-        csv_dir = os.path.join(SHARED_OUT_DIR, "csv")
-        csv_files = [f for f in os.listdir(csv_dir) if f.startswith("sarl_evaluation_results_") and f.endswith(".csv")]
-        
-        all_dfs = []
-        for f in csv_files:
-            all_dfs.append(pd.read_csv(os.path.join(csv_dir, f)))
-        
-        if all_dfs:
-            combined_df = pd.concat(all_dfs, ignore_index=True)
-            combined_df.to_csv(os.path.join(csv_dir, "sarl_evaluation_results.csv"), index=False)
-            print("Combined evaluation CSV generated.")
-            
-            # Run the plot generation
-            subprocess.run([
-                sys.executable,
-                os.path.join(os.path.dirname(__file__), "run_sarl_comparison.py"),
-                "--algo", "none",
-                "--out-dir", SHARED_OUT_DIR,
-                "--skip-baselines"
-            ])
-            print(f"Done! Find results in {SHARED_OUT_DIR}")
-        else:
-            print("No evaluation results found to aggregate.")
+        print("\n--- Running Unified Evaluation & Generating Plots ---")
+        # Run the unified evaluation and plot generation
+        subprocess.run([
+            sys.executable,
+            os.path.join(os.path.dirname(__file__), "run_sarl_comparison.py"),
+            "--algo", "none",
+            "--out-dir", SHARED_OUT_DIR,
+            "--skip-baselines",
+            "--skip-training"
+        ])
+        print(f"Done! Find results in {SHARED_OUT_DIR}")
 
 if __name__ == "__main__":
     main()

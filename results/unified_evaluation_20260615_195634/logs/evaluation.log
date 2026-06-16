@@ -1,0 +1,87 @@
+======================================================================
+  STEP 6: UNIFIED EVALUATION & PLOT GENERATION
+======================================================================
+  Timestamp:      2026-06-15T19:56:34.056868
+  Checkpoints:    C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\sarl_comparison_parallel_20260613_132212\checkpoints
+  Best Weights:   C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\best_weights_and_params (1).json
+  Baseline CSV:   C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\sarl_comparison_parallel_20260613_132212\csv\baseline_results.csv
+  Output Dir:     C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\unified_evaluation_20260615_195634
+  Seed:           42
+  Sweep Steps:    20
+  N=50, PHY=5Mbps, Fading=nakagami
+======================================================================
+
+  Loaded best weights for algorithms: ['dqn', 'ppo', 'a2c', 'mca_d3qn', 'mca_ppo']
+  Loaded baseline CSV: 20 rows
+
+  Loading model checkpoints...
+  [OK] Loaded: MCA-D3QN
+  [OK] Loaded: MCA-PPO
+  [OK] Loaded: DQN
+  [OK] Loaded: PPO
+  [OK] Loaded: A2C
+  [OK] Loaded: Tabular
+  Loaded 6 models: ['MCA-D3QN', 'MCA-PPO', 'DQN', 'PPO', 'A2C', 'Tabular']
+
+======================================================================
+  RUNNING EVALUATION SWEEP
+======================================================================
+
+  [MCA-D3QN] Applied best weights from Optuna:
+    lr=0.0001297103156501879, batch=128
+    Reward: T=0.387 D=0.005 F=0.332 J=0.276
+    Cluster-Membership: dist=0.479 sinr=0.261 mob=0.001 load=0.259
+    CH-Suitability: energy=0.167 degree=0.185 mobstab=0.284 queue=0.059 risk=0.304
+
+  [MCA-PPO] Applied best weights from Optuna:
+    lr=0.0020538212327333126, batch=32
+    Reward: T=0.272 D=0.259 F=0.166 J=0.303
+    Cluster-Membership: dist=0.402 sinr=0.399 mob=0.042 load=0.157
+    CH-Suitability: energy=0.135 degree=0.164 mobstab=0.367 queue=0.306 risk=0.027
+
+  [DQN] Applied best weights from Optuna:
+    lr=0.0009423784479932781, batch=32
+    Reward: T=0.369 D=0.293 F=0.128 J=0.210
+    Cluster-Membership: dist=0.293 sinr=0.446 mob=0.104 load=0.157
+    CH-Suitability: energy=0.144 degree=0.367 mobstab=0.157 queue=0.089 risk=0.244
+
+  [PPO] Applied best weights from Optuna:
+    lr=0.00043185045922027537, batch=128
+    Reward: T=0.223 D=0.380 F=0.392 J=0.004
+    Cluster-Membership: dist=0.330 sinr=0.437 mob=0.086 load=0.146
+    CH-Suitability: energy=0.232 degree=0.280 mobstab=0.034 queue=0.285 risk=0.167
+
+  [A2C] Applied best weights from Optuna:
+    lr=0.00027554176728778693, batch=256
+    Reward: T=0.297 D=0.204 F=0.203 J=0.296
+    Cluster-Membership: dist=0.737 sinr=0.138 mob=0.108 load=0.018
+    CH-Suitability: energy=0.016 degree=0.289 mobstab=0.234 queue=0.171 risk=0.289
+
+  [Tabular] Using default config weights (no Optuna params)
+
+  Saved evaluation CSV: C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\unified_evaluation_20260615_195634\csv\unified_eval_sweep.csv
+
+======================================================================
+  GENERATING PLOTS
+======================================================================
+  Generating plots for models: ['MCA-D3QN', 'MCA-PPO', 'DQN', 'PPO', 'A2C', 'Tabular']
+    [OK] 01_throughput_comparison.png
+    [OK] 02_delay_comparison.png
+    [OK] 03_drops_comparison.png
+    [OK] 04_fairness_comparison.png
+    [OK] 05_health_comparison.png
+    [OK] 06_mac_selection_preference.png
+    [OK] 07_summary_bar_chart.png
+    [OK] 08_inference_latency.png
+    [OK] 09_tdma_share_heatmap.png
+    [OK] 10_radar_chart.png
+    [OK] 11_combined_overview.png
+    [OK] summary_table.csv
+    [OK] 12_summary_table.png
+
+  All plots saved to: C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\unified_evaluation_20260615_195634\images
+
+======================================================================
+  STEP 6 COMPLETE
+  Results: C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\unified_evaluation_20260615_195634
+======================================================================

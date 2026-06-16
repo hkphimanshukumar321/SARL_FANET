@@ -1,0 +1,82 @@
+% experimental_setup.tex
+
+\section{Experimental Setup}
+\label{sec:setup}
+
+This section defines the simulator mechanics, training protocol, and evaluation metrics used in the empirical study. The nominal environment configuration, PHY/MAC parameters, and training protocol are summarized in Table~\ref{tab:setup}, while the compared methods and Optuna-selected hyperparameters are summarized in Table~\ref{tab:optuna}. All reported performance values are computed over five independent evaluation seeds unless stated otherwise.
+
+\begin{table*}[t]
+    \centering
+    \caption{Simulation, Training, and Evaluation Setup}
+    \label{tab:setup}
+    \begin{tabular}{@{}p{3.5cm} p{13.5cm}@{}}
+        \toprule
+        \textbf{Category} & \textbf{Configuration} \\
+        \midrule
+        Environment & $200 \times 200 \times 50$\,m 3D FANET region, $n = 50$ UAVs, Random Walk mobility \\
+        Episode timing & $T_{\text{ep}} = 100$ decision steps, decision interval $t_{\text{int}} = 1.0$\,s, slot resolution $\Delta t_{\text{slot}} = 9\,\mu\text{s}$ \\
+        PHY and queue & 5\,Mbps nominal rate, QPSK, $P_{\text{tx}} = 20$\,dBm, $N_0 = -80$\,dBm, $L_{\text{pkt}} = 1000$\,bytes, FIFO $Q_{\max} = 100$\,pkts \\
+        Channel & Nakagami-$m$ fading ($m=2.0$), path loss $PL(d) = K_{PL}d^\eta$ with $K_{PL} = 10^{-5}$, $\eta = 2.0$ \\
+        Traffic & Poisson arrivals with offered-load sweep $\lambda \in [50, 1000]$\,pps over 20 steps \\
+        Action space & MAC protocols \{TDMA, CSMA/CA\} \\
+        Training protocol & Base Seed = 42; Adam optimizer with LR = $10^{-3}$; replay buffer $|\mathcal{D}| = 50{,}000$; target update = 1000 steps \\
+        Learning schedule & 2000 episodes $\times$ 100 steps; $\epsilon$-greedy exploration from 1.0 to 0.05 over 1500 episodes \\
+        Reward weights & Throughput: $0.35$, Delay: $0.15$, Drops: $0.25$, Collisions: $0.25$ \\
+        \bottomrule
+    \end{tabular}
+\end{table*}
+
+\subsection{System and Queue Evolution}
+The environment simulates $n=50$ UAVs operating over a dynamic 3D topology. Path loss follows $PL(d) = K_{PL}d^\eta$, and the nominal channel uses Nakagami-$m$ fading. Each UAV $i$ maintains a FIFO queue of capacity $Q_{\max}$, which evolves as:
+\begin{equation}
+q_i(t+1) = \text{clip}\big(q_i(t) + a_i(t) - s_i(t) + \delta^{\text{ctrl}}_i(t), 0, Q_{\max}\big),
+\end{equation}
+where $a_i(t)$ is the packet arrival count, $s_i(t)$ is the number of served packets, and $\delta^{\text{ctrl}}_i(t)$ captures unserved control backpressure. The reported drop count includes both queue-overflows and MAC-layer retry exhaustions.
+
+\subsection{Action Space and Burst Allocation}
+The local action $a_k(t) = (m_k(t), \rho_k(t))$ combines the access mode $m_k(t) \in \{0:\text{TDMA}, 1:\text{CSMA/CA}\}$ with a discretized burst-split ratio. The candidate ratio set is $P_{\text{cand}} = \{0.10, 0.20, \dots, 0.90\}$.
+A ratio is valid when the intra-cluster duration $T_{1,k} = \rho t_{\text{burst}} \geq T^{\min}$ and the inter-cluster duration $T_{2,k} = (1 - \rho)t_{\text{burst}} \geq T^{\min}$. With $t_{\text{burst}} = 0.5$\,s and $T^{\min} = 0.05$\,s, all nine candidates are feasible, yielding a joint action space of size $|A_k| = 2 \times 9 = 18$. The baseline heuristic allocation selects $\rho^{\text{heur}}_k(t) = \text{clip}(\tilde{\rho}_k(t), 0.10, 0.70)$, where:
+\begin{equation}
+\tilde{\rho}_k(t) = 0.5 + 0.1 \frac{q_k(t)}{Q_{\max}} - 0.05|N_k(t)|.
+\end{equation}
+
+\subsection{Inter-Cluster Coordination}
+Neighboring cluster-heads coordinate through a tail-aligned synchronization model with guard time $\Delta t_{\text{coord}} = 0.05$\,s. The temporal overlap between adjacent clusters $k$ and $j$ is defined as:
+\begin{equation}
+\text{overlap}(k, j) = \max\big(0, t_{\text{burst}} - \max(T_{1,k}, T_{1,j}) - \Delta t_{\text{coord}}\big).
+\end{equation}
+This overlap yields a coordination success ratio (CSR):
+\begin{equation}
+\begin{split}
+CSR(k, j) &= \text{clip}\Bigg( \\
+&\quad \frac{\text{overlap}(k, j)}{\max\big(\min(T_{2,k}, T_{2,j}) - \Delta t_{\text{coord}}, 10^{-9}\big)}, \\
+&\quad 0, 1 \Bigg).
+\end{split}
+\end{equation}
+Interference penalties are applied proportionally to $(1.25 - CSR)$ based on the MAC protocols selected by the overlapping heads.
+
+
+
+\subsection{Hyperparameter Optimization and Profiling}
+Hyperparameter selection utilizes Optuna~\cite{akiba2019optuna} over 64 trials. As detailed in Table~\ref{tab:optuna}, the search spans 15 dimensions including architecture parameters and weights. Trained models are exported to ONNX format and profiled on five Qualcomm edge devices through AI Hub~\cite{qualcomm2025aihub}.
+
+\begin{table*}[t]
+    \centering
+    \caption{Compared Methods and NSGA-II-Selected Hyperparameters. The reward weights ($w_T, w_D, w_{drop}, w_{col}$) prioritize throughput, delay, drops, and collisions. Cluster membership weights ($w_{dist}, w_{sinr}, w_{mob}, w_{load}$) control association preferences for distance, signal quality, mobility, and load. Cluster-head health weights ($w_{eng}, w_{deg}, w_{mstb}, w_Q, w_{risk}$) evaluate energy, connectivity, stability, queue size, and disconnection risk.}
+    \label{tab:optuna}
+    \resizebox{\textwidth}{!}{
+    \begin{tabular}{@{}l cccc cccc ccccc l@{}}
+        \toprule
+        \multirow{2}{*}{\textbf{Method}} & \multicolumn{4}{c}{\textbf{Reward Weights}} & \multicolumn{4}{c}{\textbf{Membership Weights}} & \multicolumn{5}{c}{\textbf{Health Weights}} & \multirow{2}{*}{\textbf{Hyperparameters}} \\
+        \cmidrule(lr){2-5} \cmidrule(lr){6-9} \cmidrule(lr){10-14}
+        & $w_T$ & $w_D$ & $w_{drop}$ & $w_{col}$ & $w_{dist}$ & $w_{sinr}$ & $w_{mob}$ & $w_{load}$ & $w_{eng}$ & $w_{deg}$ & $w_{mstb}$ & $w_Q$ & $w_{risk}$ & \\
+        \midrule
+        \textbf{MCA-PPO (Ours)} & $0.27$ & $0.26$ & $0.17$ & $0.30$ & $0.40$ & $0.40$ & $0.04$ & $0.16$ & $0.14$ & $0.16$ & $0.37$ & $0.31$ & $0.03$ & $h = 64$, $\text{lr} = 2.05 \times 10^{-3}$, $B = 32$, $\text{heads} = 2$ \\
+        MCA-D3QN     & $0.39$ & $0.00$ & $0.33$ & $0.28$ & $0.48$ & $0.26$ & $0.00$ & $0.26$ & $0.17$ & $0.19$ & $0.28$ & $0.06$ & $0.30$ & $h = 64$, $\text{lr} = 1.30 \times 10^{-4}$, $B = 128$ \\
+        PPO          & $0.22$ & $0.38$ & $0.39$ & $0.00$ & $0.33$ & $0.44$ & $0.09$ & $0.15$ & $0.23$ & $0.28$ & $0.03$ & $0.29$ & $0.17$ & $h = 32$, $\text{lr} = 4.32 \times 10^{-4}$, $B = 128$ \\
+        A2C          & $0.30$ & $0.20$ & $0.20$ & $0.30$ & $0.74$ & $0.14$ & $0.11$ & $0.02$ & $0.02$ & $0.29$ & $0.23$ & $0.17$ & $0.29$ & $h = 32$, $\text{lr} = 2.76 \times 10^{-4}$, $B = 256$ \\
+        DQN          & $0.37$ & $0.29$ & $0.13$ & $0.21$ & $0.29$ & $0.45$ & $0.10$ & $0.16$ & $0.14$ & $0.37$ & $0.16$ & $0.09$ & $0.24$ & $h = 32$, $\text{lr} = 9.42 \times 10^{-4}$, $B = 32$ \\
+        \bottomrule
+    \end{tabular}
+    }
+\end{table*}

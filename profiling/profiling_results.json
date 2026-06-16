@@ -1,0 +1,359 @@
+{
+    "a2c": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_0.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_1.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_10.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_11.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_12.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_13.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_14.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_15.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_16.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_17.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_18.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_19.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_2.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_20.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_21.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    },
+    "a2c_model_trial_22.zip": {
+        "trainable_parameters": 19395,
+        "size_mb": 0.08041763305664062,
+        "devices": {
+            "Dragonwing RB3 Gen 2 Vision Kit": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "XR2 Gen 2 (Proxy)": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Samsung Galaxy S24": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon 8 Elite QRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            },
+            "Snapdragon X Elite CRD": {
+                "error": "'dict' object has no attribute 'execution_detail'"
+            }
+        }
+    }
+}

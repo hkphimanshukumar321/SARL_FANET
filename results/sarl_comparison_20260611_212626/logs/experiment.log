@@ -1,0 +1,13 @@
+============================================================
+ SARL Models on MARL Environment — Comparison Experiment
+ Timestamp: 2026-06-11T21:26:26.002082
+ Output: /home/laksanthd/SARL_FANET/results/sarl_comparison_20260611_212626
+ Timesteps: 10000
+ Seed: 42
+ Algo: MCA-PPO
+ N=50, PHY=5Mbps, Fading=nakagami
+============================================================
+
+============================================================
+ STEP 1: Baseline MAC Simulations (MARL Env)
+============================================================

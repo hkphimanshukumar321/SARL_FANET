@@ -1,0 +1,13 @@
+% related_work.tex
+
+\section{Related Work}
+\label{sec:related}
+
+\textbf{Classical MAC in FANETs.}
+MAC protocol design for UAV networks has been extensively surveyed in~\cite{li2024uavmac}. TDMA-based approaches guarantee collision-free transmission but require tight synchronization and waste slots when decentralized clusters fluctuate. CSMA/CA adapts to varying numbers of contenders but suffers from hidden-terminal collisions and exponential backoff overhead at high loads. Hybrid schemes that switch between TDMA and CSMA/CA based on traffic conditions have been proposed, but most rely on hand-crafted thresholds that do not generalize across dynamic mobility regimes and fading conditions.
+
+\textbf{RL-based MAC selection.}
+Deep reinforcement learning has emerged as a promising approach for adaptive MAC-layer control in dynamic wireless networks. Mnih~et~al.~\cite{mnih2015dqn} introduced Deep Q-Networks (DQN) for high-dimensional control, while Schulman~et~al.~\cite{schulman2017ppo} proposed Proximal Policy Optimization (PPO) for stable policy-gradient training. Recent FANET-specific work~\cite{zhao2025fanetrl} has applied deep RL to dynamic resource allocation under mobility constraints, demonstrating throughput gains over fixed baselines. Furthermore, drawing inspiration from recent lightweight deep learning architectures for RF-based drone classification~\cite{cnn2026drone}, we incorporate the idea of Coordinate Attention (CAS) to efficiently capture both cross-channel and spatial dependencies within our state representations. However, prior studies typically evaluate a single RL algorithm on simplified channel models without systematic comparison across algorithm families.
+
+\textbf{RL Benchmark Gap.}
+A systematic evaluation of how far modern RL controllers can perform on challenging, highly dynamic environments is lacking. Most existing benchmarks either test RL agents on toy environments or use oversimplified channel and mobility models. This paper fills this gap by benchmarking six RL agents---spanning tabular, value-based, and policy-gradient families---on a high-fidelity dynamic decentralized FANET environment under multi-fading channel conditions, complemented by automated hyperparameter tuning and hardware edge profiling.

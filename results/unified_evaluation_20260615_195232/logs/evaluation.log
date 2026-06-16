@@ -1,0 +1,17 @@
+======================================================================
+  STEP 6: UNIFIED EVALUATION & PLOT GENERATION
+======================================================================
+  Timestamp:      2026-06-15T19:52:32.918587
+  Checkpoints:    C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\sarl_comparison_parallel_20260613_132212\checkpoints
+  Best Weights:   C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\best_weights_and_params (1).json
+  Baseline CSV:   C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\sarl_comparison_parallel_20260613_132212\csv\baseline_results.csv
+  Output Dir:     C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\unified_evaluation_20260615_195232
+  Seed:           42
+  Sweep Steps:    20
+  N=50, PHY=5Mbps, Fading=nakagami
+======================================================================
+
+  Loaded best weights for algorithms: ['dqn', 'ppo', 'a2c', 'mca_d3qn', 'mca_ppo']
+  Loaded baseline CSV: 20 rows
+
+  Loading model checkpoints...

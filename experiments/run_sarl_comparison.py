@@ -332,7 +332,7 @@ def _dispatch_training(kw):
 
 
 def step2_train(out_dir, sarl_timesteps, log,
-                force_retrain=False, use_checkpoints_only=False, **kwargs):
+                force_retrain=False, use_checkpoints_only=False, target_algo="all", **kwargs):
     """Launch all training jobs across processes."""
     log("\n" + "=" * 60)
     log(" STEP 2: Training SARL agents on MARL env")
@@ -340,13 +340,16 @@ def step2_train(out_dir, sarl_timesteps, log,
 
     # Build task lists
     sarl_tasks = []
-    if getattr(params, "RUN_TABULAR_QLEARNING", True): sarl_tasks.append('tabular')
-    if getattr(params, "RUN_DQN", True): sarl_tasks.append('dqn')
-    if getattr(params, "RUN_PPO", True): sarl_tasks.append('ppo')
-    if getattr(params, "RUN_A2C", True): sarl_tasks.append('a2c')
-    if getattr(params, "RUN_CUSTOM_RL", True): 
-        sarl_tasks.append('mca_d3qn')
-        sarl_tasks.append('mca_ppo')
+    if target_algo.lower() != "all":
+        sarl_tasks.append(target_algo.lower().replace("-", "_"))
+    else:
+        if getattr(params, "RUN_TABULAR_QLEARNING", True): sarl_tasks.append('tabular')
+        if getattr(params, "RUN_DQN", True): sarl_tasks.append('dqn')
+        if getattr(params, "RUN_PPO", True): sarl_tasks.append('ppo')
+        if getattr(params, "RUN_A2C", True): sarl_tasks.append('a2c')
+        if getattr(params, "RUN_CUSTOM_RL", True): 
+            sarl_tasks.append('mca_d3qn')
+            sarl_tasks.append('mca_ppo')
 
     all_kwargs = []
     for algo in sarl_tasks:
@@ -744,13 +747,17 @@ def main_execution(args):
     if args.lr: tuning_kwargs['lr'] = args.lr
     if args.batch_size: tuning_kwargs['batch_size'] = args.batch_size
 
-    cp_dir = step2_train(
-        out_dir, sarl_ts, log,
-        force_retrain=args.force_retrain,
-        use_checkpoints_only=args.skip_training,
-        tuning_kwargs=tuning_kwargs,
-        optuna_trial=getattr(args, "optuna_trial", -1),
-    )
+    if args.algo.lower() != "none":
+        cp_dir = step2_train(
+            out_dir, sarl_ts, log,
+            force_retrain=args.force_retrain,
+            use_checkpoints_only=args.skip_training,
+            target_algo=args.algo,
+            tuning_kwargs=tuning_kwargs,
+            optuna_trial=getattr(args, "optuna_trial", -1),
+        )
+    else:
+        cp_dir = os.path.join(out_dir, "checkpoints")
 
     # Step 3: Evaluate
     if not args.skip_eval:

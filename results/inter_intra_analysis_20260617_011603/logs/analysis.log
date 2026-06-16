@@ -1,0 +1,20 @@
+======================================================================
+  INTER/INTRA CLUSTER DELAY & THROUGHPUT ANALYSIS
+======================================================================
+  Timestamp:      2026-06-17T01:16:03.911848
+  Checkpoints:    C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\sarl_comparison_parallel_20260613_132212\checkpoints
+  Best Weights:   C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\best_weights_and_params (1).json
+  Output Dir:     C:\Users\hkphi\OneDrive\Desktop\SIMULATION PHASES\PHASE8_MARLSARLCENTRALIZED\sarl_on_marl_env\results\inter_intra_analysis_20260617_011603
+  Seed:           42
+  Sweep Steps:    20
+  N=50, PHY=5Mbps, Fading=nakagami
+  Load Regimes:   Low=50-350, Medium=351-700, High=701-1000 pps
+======================================================================
+
+  Loaded best weights for algorithms: ['dqn', 'ppo', 'a2c', 'mca_d3qn', 'mca_ppo']
+  Load points (20): [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]
+  Load classification: 50pps=Low, 100pps=Low, 150pps=Low, 200pps=Low, 250pps=Low, 300pps=Low, 350pps=Low, 400pps=Medium, 450pps=Medium, 500pps=Medium, 550pps=Medium, 600pps=Medium, 650pps=Medium, 700pps=Medium, 750pps=High, 800pps=High, 850pps=High, 900pps=High, 950pps=High, 1000pps=High
+
+======================================================================
+  BASELINE EVALUATION (TDMA / CSMA)
+======================================================================

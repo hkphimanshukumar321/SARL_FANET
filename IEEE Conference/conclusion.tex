@@ -1,0 +1,10 @@
+% conclusion.tex
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper proposed the Mobility-Channel-Aware Proximal Policy Optimization (MCA-PPO) agent for MAC-layer time-burst split control in dynamic decentralized FANETs. MCA-PPO integrates a custom dual-branch feature extractor---combining an MLP scalar encoder with an LSTM temporal encoder---and a robust policy gradient actor-critic architecture. Comprehensive benchmarking against DQN, A2C, Tabular Q-Learning, and a similarly augmented MCA-D3QN demonstrated that MCA-PPO achieves the optimal balance between collision mitigation, packet drops, fairness, and throughput--delay trade-offs under multi-fading channel dynamics.
+
+Automated hyperparameter and reward-weight optimization via Optuna ensured that reported configurations are theoretically rigorous. Furthermore, real-world hardware profiling across five diverse mobile and edge platforms via the Qualcomm AI Hub demonstrated that the MCA-PPO inference graph requires minimal memory footprint and computes policies with ultra-low latency ($\sim$0.0--0.3 ms), establishing the practical feasibility of real-time on-device RL inference for UAV swarm MAC control.
+
+While this study formulates the MAC coordination policy using a Single-Agent Reinforcement Learning (SARL) wrapper applied over a multi-agent environment, this abstraction inherently centralizes the state-action space. Future work will naturally progress toward fully decentralized Multi-Agent Reinforcement Learning (MARL) methodologies. We aim to demonstrate how native MARL architectures can significantly outperform SARL wrappers by enabling distributed cooperation and localized policy execution, offering superior scalability when extending the dynamic FANET evaluation to hundreds of nodes in real-world drone deployments.

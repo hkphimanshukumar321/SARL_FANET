@@ -1,0 +1,26 @@
+============================================================
+ SARL Models on MARL Environment — Comparison Experiment
+ Timestamp: 2026-06-11T21:31:28.301753
+ Output: /home/laksanthd/SARL_FANET/experiments/../results/sarl_comparison_parallel_20260611_213123
+ Timesteps: 10000
+ Seed: 42
+ Algo: PPO
+ N=50, PHY=5Mbps, Fading=nakagami
+============================================================
+
+============================================================
+ STEP 2: Training SARL Models (10000 timesteps)
+============================================================
+  Training: PPO (SARLCentralEnv)
+    Saved: /home/laksanthd/SARL_FANET/experiments/../results/sarl_comparison_parallel_20260611_213123/checkpoints/ppo_model
+  Trained 1 models total.
+
+============================================================
+ STEP 3: Evaluating SARL Models
+============================================================
+  Evaluating: PPO
+
+============================================================
+ EXPERIMENT COMPLETE
+ Results: /home/laksanthd/SARL_FANET/experiments/../results/sarl_comparison_parallel_20260611_213123
+============================================================

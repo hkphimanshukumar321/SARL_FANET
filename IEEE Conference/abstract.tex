@@ -1,0 +1,9 @@
+% abstract.tex
+
+\begin{abstract}
+Flying ad-hoc networks (FANETs) require adaptive medium access control (MAC) that can accommodate rapid topology changes, heterogeneous fading environments (including AWGN, Rayleigh, Rician, and Nakagami-$m$), and time-varying traffic loads. In this paper, we propose the Mobility-Channel-Aware Proximal Policy Optimization (MCA-PPO) agent, a novel reinforcement learning (RL) controller designed for time-burst MAC split control in dynamic decentralized FANETs. Our custom MCA feature extractor combines a multi-layer perceptron with a long short-term memory (LSTM) network to capture both instantaneous state and temporal mobility--channel dynamics. We comprehensively benchmark MCA-PPO against five alternative RL controllers, including Tabular Q-Learning, DQN, PPO, A2C, and a similarly augmented MCA-D3QN. Hyperparameters and reward weights are jointly optimized over a fifteen-dimensional search space using Optuna. Trained inference graphs are locally profiled to guarantee ultra-low latency ($\sim$0.28\,ms) on edge CPUs. Experimental results demonstrate that MCA-PPO achieves a highly balanced, Pareto-optimal trade-off in network performance. Specifically, it significantly reduces packet drops compared to traditional value-based methods like DQN and improves throughput compared to standard PPO, while maintaining low average delay and excellent load-balancing fairness across diverse cluster topologies.
+\end{abstract}
+
+\begin{IEEEkeywords}
+FANET, reinforcement learning, proximal policy optimization, time-burst MAC, decentralized clustering, edge inference, Optuna.
+\end{IEEEkeywords}

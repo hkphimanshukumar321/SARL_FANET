@@ -1,0 +1,31 @@
+============================================================
+ Timestamp: 2026-06-12T21:23:35.975297
+ Output: /home/laksanthd/SARL_FANET/experiments/../results/sarl_comparison_parallel_20260612_212334
+ SARL Timesteps: 2000
+ Seed: 42
+ N=50, PHY=5Mbps, Fading=nakagami
+============================================================
+
+============================================================
+ STEP 2: Training SARL agents on MARL env
+============================================================
+  Launching 6 training jobs on 6 workers
+  SARL: ['tabular', 'dqn', 'ppo', 'a2c', 'mca_d3qn', 'mca_ppo'] (2000 timesteps each)
+    --> A2C trained.
+    --> MCA-D3QN trained.
+    --> TABULAR trained.
+    --> MCA-PPO trained.
+    --> PPO trained.
+    --> DQN trained.
+  All training complete.
+
+============================================================
+ STEP 3: Evaluation Sweep
+============================================================
+  Loaded SARL: MCA-D3QN
+  Loaded SARL: MCA-PPO
+  Loaded SARL: DQN
+  Loaded SARL: PPO
+  Loaded SARL: A2C
+  Loaded SARL: Tabular
+  Evaluating 6 models across 20 load points
